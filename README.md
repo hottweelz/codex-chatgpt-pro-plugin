@@ -110,6 +110,14 @@ and requires `--confirm-repo-context-upload` or
 Use `--repo-context=off` / `--no-repo-context` or pass explicit scrubbed
 `--upload-file` artifacts for narrower calls.
 
+All prompt files, context files, context-directory files, and explicit uploads
+are checked for protected secret paths, secret-like text, symlinks, and
+repository-boundary escapes before a browser connection. An outside-repository
+file requires an exact per-file confirmation, for example
+`--confirm-outside-repo=/absolute/path/to/notes.md`; this confirmation does not
+override secret, symlink, type, or size checks. The default per-file limit is
+50 MiB and can be changed with `CHATGPT_OUTBOUND_MAX_FILE_BYTES`.
+
 ## How it works
 
 ```text

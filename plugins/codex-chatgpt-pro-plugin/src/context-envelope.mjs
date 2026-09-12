@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { lstatSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { sha256 } from "./chatgpt-messages.mjs";
+import { readOutboundFile } from "./repo-context-security.mjs";
 
 const defaults = {
   "codex-session-digest.md": 12_000,
@@ -20,9 +21,10 @@ const orderedFiles = [
   { name: "test-output.txt", title: "Test Output", language: "text" },
 ];
 
-function sectionForFile({ filePath, contextDir, spec, budget }) {
-  const text = readFileSync(filePath, "utf8");
-  const stats = statSync(filePath);
+function sectionForFile({ filePath, contextDir, spec, budget, outboundOptions }) {
+  const authorized = readOutboundFile(filePath, { ...outboundOptions, textOnly: true });
+  const text = authorized.text;
+  const stats = { size: authorized.bytes };
   const entry = {
     file: spec.name,
     path: filePath,
@@ -64,7 +66,16 @@ function sectionForFile({ filePath, contextDir, spec, budget }) {
   };
 }
 
-export function composeContextEnvelope({ prompt, contextDir, budgets = {} }) {
+function pathExists(path) {
+  try {
+    lstatSync(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function composeContextEnvelope({ prompt, contextDir, budgets = {}, outboundOptions = {} }) {
   if (!contextDir) {
     return {
       prompt,
@@ -79,11 +90,11 @@ export function composeContextEnvelope({ prompt, contextDir, budgets = {} }) {
   const sections = [];
 
   for (const spec of orderedFiles) {
-    if (spec.fallbackOnly && existsSync(resolve(dir, spec.fallbackOnly))) continue;
+    if (spec.fallbackOnly && pathExists(resolve(dir, spec.fallbackOnly))) continue;
     const filePath = resolve(dir, spec.name);
-    if (!existsSync(filePath)) continue;
+    if (!pathExists(filePath)) continue;
     const budget = Number(budgets[spec.name] || defaults[spec.name]);
-    const section = sectionForFile({ filePath, contextDir: dir, spec, budget });
+    const section = sectionForFile({ filePath, contextDir: dir, spec, budget, outboundOptions });
     sections.push(section.markdown);
     files.push(section.entry);
     if (section.entry.included) includedFiles.push(section.entry);

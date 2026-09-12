@@ -17,6 +17,7 @@ const result = composeContextEnvelope({
   budgets: {
     "test-output.txt": 12,
   },
+  outboundOptions: { root: dir },
 });
 
 assert.equal(result.context.contextDir, dir);

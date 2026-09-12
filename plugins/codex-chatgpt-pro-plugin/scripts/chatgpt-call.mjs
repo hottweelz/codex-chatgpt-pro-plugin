@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { CdpSession, connectToPage, now, sleep } from "../src/cdp-client.mjs";
 import {
@@ -18,7 +18,8 @@ import {
 import { composeContextEnvelope } from "../src/context-envelope.mjs";
 import { buildRepoContextBundle } from "../src/repo-context-bundle.mjs";
 import { decideRepoContextMode } from "../src/repo-context-policy.mjs";
-import { uploadFiles as uploadChatGptFiles } from "../src/chatgpt-upload.mjs";
+import { describeUploadFiles, uploadFiles as uploadChatGptFiles } from "../src/chatgpt-upload.mjs";
+import { readOutboundFile } from "../src/repo-context-security.mjs";
 import {
   countMessagesByRole,
   findAssistantAfterUser,
@@ -46,6 +47,7 @@ import {
   boolEnv,
   DEFAULT_CDP_PORT,
   DEFAULT_TARGET_URL,
+  repoRoot,
   runDir as makeRunDir,
   runId as makeRunId,
 } from "../src/runtime-config.mjs";
@@ -67,16 +69,18 @@ function flag(name) {
   return process.argv.includes(`--${name}`);
 }
 
-function readTextFile(path) {
-  return readFileSync(resolve(path), "utf8");
-}
-
 function buildPrompt() {
   const promptFile = arg("prompt-file") || arg("message-file") || process.env.CHATGPT_PROMPT_FILE || "";
   const prompt = arg("prompt") || process.env.CHATGPT_PROMPT || "";
   const contextFile = arg("context-file") || process.env.CHATGPT_CONTEXT_FILE || "";
   let contextDir = arg("context-dir") || process.env.CHATGPT_CONTEXT_DIR || "";
   const contextLabel = arg("context-label") || process.env.CHATGPT_CONTEXT_LABEL || contextFile;
+  const confirmedOutsidePaths = args("confirm-outside-repo");
+  const outboundOptions = {
+    root: repoRoot,
+    confirmedOutsidePaths,
+    maxFileBytes: Number(process.env.CHATGPT_OUTBOUND_MAX_FILE_BYTES || 50 * 1024 * 1024),
+  };
   const uploadFiles = [
     ...args("upload-file"),
     ...String(process.env.CHATGPT_UPLOAD_FILES || "")
@@ -90,14 +94,14 @@ function buildPrompt() {
   const repoContextConfirmed = flag("confirm-repo-context-upload")
     || boolEnv("CHATGPT_CONFIRM_REPO_CONTEXT_UPLOAD");
 
-  const base = promptFile ? readTextFile(promptFile) : prompt;
+  const base = promptFile ? readOutboundFile(promptFile, { ...outboundOptions, textOnly: true }).text : prompt;
   if (!base.trim()) {
     throw new Error("Provide --prompt, --prompt-file, CHATGPT_PROMPT, or CHATGPT_PROMPT_FILE.");
   }
 
   let composed = base;
   if (contextFile) {
-    const context = readTextFile(contextFile);
+    const context = readOutboundFile(contextFile, { ...outboundOptions, textOnly: true }).text;
     composed = [
       base.trim(),
       "",
@@ -141,7 +145,8 @@ function buildPrompt() {
     else uploadFiles.push(autoContextBundle.context);
   }
 
-  const envelope = composeContextEnvelope({ prompt: composed, contextDir });
+  if (uploadFiles.length) describeUploadFiles(uploadFiles, outboundOptions);
+  const envelope = composeContextEnvelope({ prompt: composed, contextDir, outboundOptions });
   return {
     prompt: envelope.prompt,
     promptFile,
@@ -154,6 +159,7 @@ function buildPrompt() {
     repoContextDecision,
     autoContextBundle,
     contextEnvelope: envelope.context,
+    outboundOptions,
   };
 }
 
@@ -410,7 +416,10 @@ async function main() {
     if (promptInput.uploadFiles.length) {
       runState.update("uploading");
       receipt.upload = await step(receipt, "uploaded-files", () =>
-        uploadChatGptFiles(cdp, promptInput.uploadFiles, { stageDir: resolve(runDir, "uploads") }),
+        uploadChatGptFiles(cdp, promptInput.uploadFiles, {
+          stageDir: resolve(runDir, "uploads"),
+          ...promptInput.outboundOptions,
+        }),
       );
     }
 

@@ -1,11 +1,8 @@
 import { basename, extname, relative, resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { evaluate, sleep } from "./cdp-client.mjs";
-
-function fileSha256(path) {
-  return createHash("sha256").update(readFileSync(path)).digest("hex");
-}
+import { isTextLikePath, readOutboundFile } from "./repo-context-security.mjs";
 
 function textSha256(text) {
   return createHash("sha256").update(text).digest("hex");
@@ -34,31 +31,6 @@ function displayOriginalPath(path) {
   const cwd = resolve(process.cwd());
   if (absolute === cwd || absolute.startsWith(`${cwd}${sep}`)) return relative(cwd, absolute) || basename(absolute);
   return `[outside-cwd]/${basename(absolute)}`;
-}
-
-function textUploadExtension(path) {
-  return new Set([
-    ".css",
-    ".csv",
-    ".diff",
-    ".html",
-    ".js",
-    ".json",
-    ".jsx",
-    ".log",
-    ".md",
-    ".mjs",
-    ".patch",
-    ".py",
-    ".sh",
-    ".toml",
-    ".ts",
-    ".tsx",
-    ".txt",
-    ".xml",
-    ".yaml",
-    ".yml",
-  ]).has(extname(path).toLowerCase());
 }
 
 async function fileInputNodeId(cdp) {
@@ -104,33 +76,40 @@ async function removeComposerAttachments(cdp) {
   ).catch(() => ({ removed: 0 }));
 }
 
-export function describeUploadFiles(paths) {
+export function describeUploadFiles(paths, outboundOptions = {}) {
   return paths.map((path) => {
-    const absolutePath = resolve(path);
-    if (!existsSync(absolutePath)) {
-      throw uploadError("input.attachment_file_missing", `Upload file does not exist: ${absolutePath}`, { path: absolutePath });
+    try {
+      const file = readOutboundFile(path, outboundOptions);
+      return {
+        path: file.path,
+        name: basename(file.path),
+        bytes: file.bytes,
+        sha256: file.sha256,
+        displayPath: file.displayPath,
+        lexicalInside: file.lexicalInside,
+        realpathInside: file.realpathInside,
+      };
+    } catch (error) {
+      if (error?.errorCode === "outbound.file_missing") {
+        throw uploadError("input.attachment_file_missing", `Upload file does not exist: ${error.details?.path || resolve(path)}`, error.details);
+      }
+      if (error?.errorCode === "outbound.not_regular_file") {
+        throw uploadError("input.attachment_not_file", `Upload path is not a file: ${error.details?.path || resolve(path)}`, error.details);
+      }
+      throw error;
     }
-    const stats = statSync(absolutePath);
-    if (!stats.isFile()) {
-      throw uploadError("input.attachment_not_file", `Upload path is not a file: ${absolutePath}`, { path: absolutePath });
-    }
-    return {
-      path: absolutePath,
-      name: basename(absolutePath),
-      bytes: stats.size,
-      sha256: fileSha256(absolutePath),
-    };
   });
 }
 
-export function stageUploadFiles(paths, { stageDir, stamp = utcFileStamp() } = {}) {
-  if (!stageDir) return describeUploadFiles(paths);
-  const originals = describeUploadFiles(paths);
+export function stageUploadFiles(paths, { stageDir, stamp = utcFileStamp(), ...outboundOptions } = {}) {
+  if (!stageDir) return describeUploadFiles(paths, outboundOptions);
+  const originals = describeUploadFiles(paths, outboundOptions);
   mkdirSync(stageDir, { recursive: true, mode: 0o700 });
   return originals.map((original, index) => {
     const stagedPath = resolve(stageDir, stampedName(original.name, stamp, index));
-    if (textUploadExtension(original.path)) {
-      const source = readFileSync(original.path, "utf8");
+    const sourceFile = readOutboundFile(original.path, outboundOptions);
+    if (isTextLikePath(original.path)) {
+      const source = sourceFile.text;
       writeFileSync(stagedPath, [
         "<!-- chatgpt-pro-codex staged upload metadata",
         `uploaded-at-utc: ${stamp}`,
@@ -149,10 +128,10 @@ export function stageUploadFiles(paths, { stageDir, stamp = utcFileStamp() } = {
         "",
       ].join("\n"), { mode: 0o600 });
     } else {
-      copyFileSync(original.path, stagedPath);
+      writeFileSync(stagedPath, sourceFile.buffer, { mode: 0o600 });
       chmodSync(stagedPath, 0o600);
     }
-    const [staged] = describeUploadFiles([stagedPath]);
+    const [staged] = describeUploadFiles([stagedPath], outboundOptions);
     return {
       ...staged,
       original: {
@@ -235,8 +214,8 @@ async function waitForUploadEvidence(cdp, files, { timeoutMs = 60_000 } = {}) {
   };
 }
 
-export async function uploadFiles(cdp, paths, { timeoutMs = 60_000, stageDir = "" } = {}) {
-  const files = stageUploadFiles(paths, { stageDir });
+export async function uploadFiles(cdp, paths, { timeoutMs = 60_000, stageDir = "", ...outboundOptions } = {}) {
+  const files = stageUploadFiles(paths, { stageDir, ...outboundOptions });
   if (!files.length) return { ok: true, files: [], inputSelector: null, evidence: null };
 
   await cdp.send("DOM.enable").catch(() => {});

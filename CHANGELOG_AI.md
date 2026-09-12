@@ -2,6 +2,28 @@
 
 Newest entries go first.
 
+## 2026-09-12T18:06:25Z — Codex
+
+- Task summary: Harden the outbound file/context boundary after the user prioritized that concern and classified CDP as an accepted edge case, origin/profile as a yellow flag, and history/observer concerns as lower priority.
+- Selected agent team: Codex lead; STE Security Auditor (`/Users/jamestylee/AI-STE/ste/.ai/agents/security-auditor.md`); outbound gate design review.
+- Changes made: Added `readOutboundFile()` and shared text-type detection to `src/repo-context-security.mjs`. Routed prompt files, context files, recognized context-directory files, explicit uploads, and generated repo context through the validator. Added exact `--confirm-outside-repo=/absolute/path` semantics, protected-path checks on absolute and canonical paths, in-repo and outside symlink-component rejection, canonical-path reads with `O_NOFOLLOW` and file identity checks, strict UTF-8/NUL checks for text, byte-level fallback scanning for binary/unknown files, and a default 50 MiB per-file limit via `CHATGPT_OUTBOUND_MAX_FILE_BYTES`. Added focused negative tests and documentation. Synchronized the materialized plugin.
+- Files touched: `src/repo-context-security.mjs`, `src/chatgpt-upload.mjs`, `src/context-envelope.mjs`, `scripts/chatgpt-call.mjs`, `scripts/outbound-security-selftest.mjs`, related upload/context self-tests, `package.json`, `README.md`, `.codex/skills/chatgpt-pro-line/SKILL.md`, and synchronized copies under `plugins/codex-chatgpt-pro-plugin/`.
+- Commands/tests run: `npm run plugin:sync`; focused outbound, upload, context-envelope, and repo-context tests; full `npm run test:v1`; `npm audit --audit-level=high`; `git diff --check`; source/materialized `cmp`; HomeBoss plan and review gates.
+- Results: Focused and full v1 suites passed. npm audit reports 0 vulnerabilities. Package parity checks passed. The materialized package was reinstalled and its `status` check passed. HomeBoss review recorded one exact-time parent-directory swap race as a residual; the user-approved environment makes that out of scope for this change. The bounded release-check was approved. No browser launch, login, upload, or live ChatGPT call occurred.
+- Decisions made: Exact outside-file confirmation is required per path. Confirmation does not bypass secret, symlink, type, or size checks. Binary uploads remain available. The remaining exact-time parent-directory swap race is accepted as a theoretical residual for this controlled environment and is not a reason to block this bounded change.
+- Lessons learned:
+  - Mistake: The first validator revision only scanned recognized text extensions and skipped parent symlink checks for outside paths.
+  - Root Cause: Binary/unknown inputs can contain ASCII secrets despite invalid UTF-8, and macOS `/var`/`/tmp` aliases require canonicalization before symlink traversal checks.
+  - Future Trigger: Any new file-like input, upload mode, context envelope, or path normalization change.
+  - Required Behavior Change: Route every outbound file-like input through the shared validator; test both normal and adversarial paths, including macOS system aliases.
+  - Verification Gate: `npm run test:outbound-security` and `npm run test:v1` pass after final `npm run plugin:sync`; source and materialized files compare equal.
+  - Durable Memory Update: Updated `MEMORY.md` with the outbound gate and accepted TOCTOU residual.
+- Known issues: Yellow — browser origin/profile attestation is not yet strict. Accepted edge cases — loopback CDP has no authentication; observer/history hardening remains pending. The outbound gate still depends on heuristic secret scanning and cannot semantically inspect arbitrary binary formats.
+- Next recommended steps: If desired, implement strict ChatGPT origin/profile attestation next; keep live testing limited to trusted non-sensitive prompts until that yellow flag is addressed.
+- Notes for the next agent: Use `--confirm-outside-repo=/absolute/path` once for each deliberate outside file. Do not use `--confirm-repo-context-upload` as a substitute; it only confirms generated repo context.
+- MEMORY.md update: completed.
+- GitHub sync: pending at handoff-write time; commit only intended files and verify `HEAD...@{u}` is `0 0`.
+
 ## 2026-09-12T17:32:07Z — Codex
 
 - Task summary: Review the fork, install it as a local Codex plugin on this Mac, and repair installation defects found during testing.

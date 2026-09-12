@@ -15,7 +15,8 @@
 ## Known runtime risks
 
 - Do not launch the dedicated logged-in Chrome profile or make live calls until the browser-control security review is addressed.
-- Explicit upload and context paths need one containment, symlink, secret-scan, and confirmation gate.
+- Explicit upload and context paths now use one containment, symlink, secret-scan, and exact outside-path confirmation gate. Binary uploads remain supported and receive path, symlink, size, and byte-level secret checks; full semantic scanning is stronger for text inputs.
 - Browser operations need strict `https://chatgpt.com` origin checks and profile or process ownership checks.
 - History export needs alias validation, output containment, symlink rejection, `0700` directories, and `0600` atomic files.
 - The localhost CDP endpoint is loopback-only but unauthenticated. A local process running as the user can control the logged-in browser.
+- The outbound validator uses canonical-path reads and descriptor identity checks. A malicious parent-directory swap at the exact authorization boundary remains a theoretical residual; this is accepted for the user's controlled single-user Mac environment.

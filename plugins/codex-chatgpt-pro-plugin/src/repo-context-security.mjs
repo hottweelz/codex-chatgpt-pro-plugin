@@ -1,11 +1,16 @@
+import { createHash } from "node:crypto";
 import {
+  closeSync,
+  constants,
+  fstatSync,
   existsSync,
   lstatSync,
+  openSync,
   readFileSync,
   realpathSync,
   statSync,
 } from "node:fs";
-import { resolve, sep } from "node:path";
+import { parse, relative, resolve, sep } from "node:path";
 
 const SECRET_PATH_RULES = [
   ["env_file", /(^|\/)\.env(\..*)?$/i],
@@ -33,6 +38,29 @@ const CONTENT_RULES = [
 
 const SECRETISH_ASSIGNMENT =
   /\b([A-Za-z0-9_-]*(?:api[_-]?key|secret|token|password|passwd|pwd|private[_-]?key|access[_-]?key|client[_-]?secret|authorization|credential)[A-Za-z0-9_-]*)\b\s*[:=]\s*["']?([A-Za-z0-9_+./=-]{20,})/gi;
+
+const TEXT_FILE_EXTENSIONS = new Set([
+  ".css",
+  ".csv",
+  ".diff",
+  ".html",
+  ".js",
+  ".json",
+  ".jsx",
+  ".log",
+  ".md",
+  ".mjs",
+  ".patch",
+  ".py",
+  ".sh",
+  ".toml",
+  ".ts",
+  ".tsx",
+  ".txt",
+  ".xml",
+  ".yaml",
+  ".yml",
+]);
 
 function normalizedPath(file) {
   return String(file || "").replaceAll("\\", "/").replace(/^\.\//, "");
@@ -182,4 +210,241 @@ export function scanRepoContextFiles(files, {
     skipped,
     findings,
   };
+}
+
+export function isTextLikePath(file) {
+  const value = String(file || "");
+  return TEXT_FILE_EXTENSIONS.has(value.slice(value.lastIndexOf(".")).toLowerCase());
+}
+
+function outboundError(errorCode, message, details = {}) {
+  const error = new Error(message);
+  error.errorCode = errorCode;
+  error.details = details;
+  return error;
+}
+
+function pathInside(rootPath, targetPath) {
+  return targetPath === rootPath || targetPath.startsWith(`${rootPath}${sep}`);
+}
+
+function displayPathFor(rootPath, targetPath) {
+  const value = relative(rootPath, targetPath);
+  return value && !value.startsWith("..") && value !== "" ? value.replaceAll("\\", "/") : `[outside-repo]/${targetPath.split(sep).at(-1)}`;
+}
+
+function confirmedPathSet(paths = []) {
+  const values = typeof paths === "string" ? [paths] : [...paths || []];
+  return new Set(values.map((value) => resolve(String(value))));
+}
+
+function symlinkComponent(path, start = parse(path).root) {
+  let current = start;
+  const suffix = relative(start, path);
+  for (const component of suffix.split(sep).filter(Boolean)) {
+    current = resolve(current, component);
+    try {
+      if (lstatSync(current).isSymbolicLink()) return current;
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+      return null;
+    }
+  }
+  return null;
+}
+
+function canonicalizeSystemAlias(path) {
+  for (const alias of ["/var", "/tmp"]) {
+    if (path !== alias && !path.startsWith(`${alias}${sep}`)) continue;
+    try {
+      const canonical = realpathSync(alias);
+      return `${canonical}${path.slice(alias.length)}`;
+    } catch {
+      return path;
+    }
+  }
+  return path;
+}
+
+function statIdentity(stats) {
+  return `${stats.dev}:${stats.ino}:${stats.size}:${stats.mtimeMs}`;
+}
+
+function readFileDescriptor(path, expectedStats) {
+  let fd;
+  try {
+    fd = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW || 0));
+    const openedStats = fstatSync(fd);
+    if (!openedStats.isFile()) {
+      throw outboundError("outbound.not_regular_file", `Outbound path is not a regular file: ${path}`, { path });
+    }
+    if (statIdentity(openedStats) !== statIdentity(expectedStats)) {
+      throw outboundError("outbound.file_changed", `Outbound file changed while it was being authorized: ${path}`, { path });
+    }
+    const buffer = readFileSync(fd);
+    const finalStats = fstatSync(fd);
+    if (statIdentity(finalStats) !== statIdentity(expectedStats)) {
+      throw outboundError("outbound.file_changed", `Outbound file changed while it was being read: ${path}`, { path });
+    }
+    return buffer;
+  } catch (error) {
+    if (error?.errorCode) throw error;
+    if (error?.code === "ELOOP") {
+      throw outboundError("outbound.symlink", `Refusing symbolic-link outbound file: ${path}`, { path });
+    }
+    if (error?.code === "ENOENT") {
+      throw outboundError("outbound.file_missing", `Outbound file does not exist: ${path}`, { path });
+    }
+    throw error;
+  } finally {
+    if (fd != null) closeSync(fd);
+  }
+}
+
+export function readOutboundFile(file, {
+  root = process.cwd(),
+  confirmedOutsidePaths = [],
+  maxFileBytes = 0,
+  scanContent = true,
+  textOnly = false,
+} = {}) {
+  const absolutePath = resolve(String(file || ""));
+  const rootPath = resolve(root || process.cwd());
+  const rootRealpath = realpathSync(rootPath);
+  const lexicalInside = pathInside(rootPath, absolutePath);
+  let lstat;
+  try {
+    lstat = lstatSync(absolutePath);
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      throw outboundError("outbound.file_missing", `Outbound file does not exist: ${absolutePath}`, { path: absolutePath });
+    }
+    throw error;
+  }
+  if (lstat.isSymbolicLink()) {
+    throw outboundError("outbound.symlink", `Refusing symbolic-link outbound file: ${absolutePath}`, {
+      path: absolutePath,
+      displayPath: displayPathFor(rootPath, absolutePath),
+    });
+  }
+  const symlinkScanPath = canonicalizeSystemAlias(absolutePath);
+  const symlinkScanRoot = lexicalInside ? canonicalizeSystemAlias(rootPath) : parse(symlinkScanPath).root;
+  const symlink = symlinkComponent(symlinkScanPath, symlinkScanRoot);
+  if (symlink) {
+    throw outboundError("outbound.symlink", `Refusing outbound path with symbolic-link component: ${absolutePath}`, {
+      path: absolutePath,
+      component: symlink,
+      displayPath: displayPathFor(rootPath, absolutePath),
+    });
+  }
+  if (!lstat.isFile()) {
+    throw outboundError("outbound.not_regular_file", `Outbound path is not a regular file: ${absolutePath}`, {
+      path: absolutePath,
+      displayPath: displayPathFor(rootPath, absolutePath),
+    });
+  }
+
+  const realpath = realpathSync(absolutePath);
+  const realpathInside = pathInside(rootRealpath, realpath);
+  const displayPath = displayPathFor(rootPath, absolutePath);
+  const pathFinding = [
+    secretPathFinding(absolutePath),
+    secretPathFinding(realpath),
+  ].find(Boolean);
+  if (pathFinding) {
+    throw outboundError("outbound.secret_path_blocked", "Outbound file path matches a protected secret path.", {
+      path: absolutePath,
+      displayPath,
+      finding: { ...pathFinding, file: displayPath },
+    });
+  }
+  const confirmed = confirmedPathSet(confirmedOutsidePaths);
+  if ((!lexicalInside || !realpathInside) && !confirmed.has(absolutePath) && !confirmed.has(realpath)) {
+    throw outboundError(
+      "outbound.outside_repo_confirmation_required",
+      `Outbound file is outside the repository. Confirm this exact path with --confirm-outside-repo=${absolutePath}.`,
+      { path: absolutePath, realpath, displayPath, lexicalInside, realpathInside },
+    );
+  }
+
+  const currentRealpath = realpathSync(absolutePath);
+  if (currentRealpath !== realpath) {
+    throw outboundError("outbound.file_changed", `Outbound file path changed while it was being authorized: ${absolutePath}`, {
+      path: absolutePath,
+      displayPath,
+      authorizedRealpath: realpath,
+      currentRealpath,
+    });
+  }
+  const stats = statSync(realpath);
+  if (maxFileBytes > 0 && stats.size > maxFileBytes) {
+    throw outboundError(
+      "outbound.file_too_large",
+      `Outbound file is ${stats.size} bytes, above the limit of ${maxFileBytes}: ${absolutePath}`,
+      { path: absolutePath, displayPath, bytes: stats.size, maxFileBytes },
+    );
+  }
+
+  const textLike = isTextLikePath(absolutePath);
+  const buffer = readFileDescriptor(realpath, stats);
+  let text = null;
+  const shouldDecode = textLike || textOnly || (scanContent && !buffer.includes(0));
+  if (shouldDecode) {
+    try {
+      text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+    } catch {
+      if (!textOnly && !textLike) text = null;
+      else {
+        throw outboundError("outbound.invalid_utf8", `Outbound text input is not valid UTF-8: ${absolutePath}`, {
+          path: absolutePath,
+          displayPath,
+        });
+      }
+    }
+    if (text?.includes("\u0000")) {
+      throw outboundError("outbound.nul_byte", `Outbound text input contains a NUL byte: ${absolutePath}`, {
+        path: absolutePath,
+        displayPath,
+      });
+    }
+  }
+
+  if (scanContent && text == null && buffer.length) {
+    const findings = scanSecretContent(buffer.toString("latin1"), displayPath);
+    if (findings.length) {
+      throw outboundError("outbound.secret_content_blocked", "Outbound binary input contains a potential secret.", {
+        path: absolutePath,
+        displayPath,
+        findings,
+      });
+    }
+  }
+
+  if (scanContent && text != null) {
+    const findings = scanSecretContent(text, displayPath);
+    if (findings.length) {
+      throw outboundError("outbound.secret_content_blocked", "Outbound text input contains a potential secret.", {
+        path: absolutePath,
+        displayPath,
+        findings,
+      });
+    }
+  }
+
+  return {
+    path: absolutePath,
+    realpath,
+    displayPath,
+    bytes: stats.size,
+    sha256: sha256Bytes(buffer),
+    textLike,
+    text,
+    buffer,
+    lexicalInside,
+    realpathInside,
+  };
+}
+
+function sha256Bytes(value) {
+  return createHash("sha256").update(value).digest("hex");
 }

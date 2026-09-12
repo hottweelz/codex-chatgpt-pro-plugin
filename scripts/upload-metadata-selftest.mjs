@@ -10,7 +10,7 @@ try {
   const filePath = join(dir, "upload-note.txt");
   writeFileSync(filePath, "upload metadata proof\n");
 
-  const [record] = describeUploadFiles([filePath]);
+  const [record] = describeUploadFiles([filePath], { root: dir });
   assert.equal(record.name, "upload-note.txt");
   assert.equal(record.bytes, 22);
   assert.equal(typeof record.sha256, "string");
@@ -19,6 +19,7 @@ try {
   const staged = stageUploadFiles([filePath], {
     stageDir: join(dir, "uploads"),
     stamp: "2026-06-17T07-41-00-000Z",
+    root: dir,
   });
   assert.equal(staged.length, 1);
   assert.equal(staged[0].name, "upload-note.2026-06-17T07-41-00-000Z.txt");
@@ -34,14 +35,14 @@ try {
   assert.match(stagedText, /upload metadata proof/);
 
   assert.throws(
-    () => describeUploadFiles([join(dir, "missing.txt")]),
+    () => describeUploadFiles([join(dir, "missing.txt")], { root: dir }),
     /Upload file does not exist/,
   );
 
   const subdir = join(dir, "folder");
   mkdirSync(subdir);
   assert.throws(
-    () => describeUploadFiles([subdir]),
+    () => describeUploadFiles([subdir], { root: dir }),
     /Upload path is not a file/,
   );
 } finally {

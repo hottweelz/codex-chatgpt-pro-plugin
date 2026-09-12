@@ -177,6 +177,14 @@ chatgpt-pro call --alias=main --upload-file=notes.md --upload-file=diff.patch --
 CHATGPT_UPLOAD_FILES="notes.md,diff.patch" chatgpt-pro call --alias=main --prompt="Review the attached artifacts."
 ```
 
+Before any browser connection, prompt files, context files, recognized context
+directory files, and explicit uploads pass one outbound-data check. The check
+rejects protected secret paths, secret-like text, symlinks, and unsafe path
+boundaries. Files outside the current repository require an exact confirmation
+such as `--confirm-outside-repo=/absolute/path/to/notes.md`; confirmation does
+not bypass the other checks. The default per-file limit is 50 MiB and can be
+changed with `CHATGPT_OUTBOUND_MAX_FILE_BYTES`.
+
 Repo context modes:
 
 ```bash
