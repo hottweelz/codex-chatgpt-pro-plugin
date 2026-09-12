@@ -2,6 +2,28 @@
 
 Newest entries go first.
 
+## 2026-09-12T18:25:46Z — Codex
+
+- Task summary: Remove the superseded `codex-chatgpt-line` plugin while keeping the new `codex-chatgpt-pro-plugin` browser and installation active.
+- Selected agent team: Codex lead; no additional worker needed for this bounded cleanup.
+- Changes made: Confirmed no old plugin registration or old process was active. Moved the old global skill, old runtime state including `broker.token` and Chrome profile, old source checkout/worktrees, and three old Claude CLI cache directories to macOS Trash. Preserved historical Codex/Claude conversation logs and memory text. Did not kill Chrome or touch the new `/Users/jamestylee/.chatgpt-pro-codex/chrome-profile`.
+- Files touched: `CHANGELOG_AI.md` only. Cleanup targets were external active artifacts, moved reversibly to `/Users/jamestylee/.Trash/*-old-plugin-20260912T182546Z`.
+- Commands/tests run: Codex plugin list/marketplace inventory; old manifest/package and uninstall-script inspection; old process check; explicit active-path checks; `curl http://127.0.0.1:9222/json/version`; new-profile process check; new plugin list check.
+- Results: Old active paths are absent: `/Users/jamestylee/.codex/skills/chatgpt-line`, `/Users/jamestylee/.codex-chatgpt-line`, `/Users/jamestylee/Projects/codex-chatgpt-line`, and related caches. New Chrome remains running with PID 96270 and the new profile. New plugin `codex-chatgpt-pro-plugin@codex-chatgpt-pro-plugin` remains installed and enabled. No source/browser process was killed.
+- Decisions made: Treat the old source checkout and runtime as superseded active artifacts and move them to recoverable Trash. Leave historical logs/memory references because they are not active plugin artifacts.
+- Lessons learned:
+  - Mistake: none.
+  - Root Cause: The old plugin was not registered in current Codex plugin metadata, but its global skill, 911 MB runtime/profile, source checkout, and caches remained.
+  - Future Trigger: Any plugin replacement or request to remove a superseded integration.
+  - Required Behavior Change: Inventory registration, processes, skills, state, profiles, source, and caches separately; preserve the replacement browser/profile and historical records.
+  - Verification Gate: Old active paths absent, old process absent, new CDP endpoint reachable, and new plugin still enabled.
+  - Durable Memory Update: not needed; cleanup scope and separation are recorded here.
+- Known issues: Recoverable Trash copies remain until Trash is emptied. Historical memory/session logs still contain the old project name by design.
+- Next recommended steps: Continue testing only through the new `codex-chatgpt-pro-plugin`; empty the listed Trash items only if permanent deletion is later requested.
+- Notes for the next agent: New profile is `/Users/jamestylee/.chatgpt-pro-codex/chrome-profile`; do not remove it when cleaning old artifacts.
+- MEMORY.md update: not needed.
+- GitHub sync: pending at handoff-write time; commit this ledger entry and verify `HEAD...@{u}` is `0 0`.
+
 ## 2026-09-12T18:17:14Z — Codex
 
 - Task summary: Run the first controlled live test of the installed local plugin after the user completed visible ChatGPT login.
