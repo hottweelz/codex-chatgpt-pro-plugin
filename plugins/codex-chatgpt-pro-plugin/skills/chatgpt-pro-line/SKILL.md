@@ -405,8 +405,19 @@ package-global browser-profile lock at:
 ```
 
 Default behavior is blocking: wait up to 10 minutes for the lock, heartbeat
-while held, reclaim stale locks only when the owner appears dead, and record
+while held, reclaim a confirmed-dead owner immediately (or a stale unknown owner), and record
 `owner` plus `lock` fields in the receipt.
+Each acquisition has a unique owner nonce. Heartbeat and release compare the
+complete owner identity and lock-directory identity, so a replacement owner
+with a reused run id cannot be updated or deleted by an old handle. Reclaim
+claims an in-lock marker and rechecks the lock identity before removal. The
+configured stale-lock TTL is used consistently for acquisition and release.
+The lock writes an initialization marker before owner/heartbeat data; a failed
+initialization removes only the lock directory created by that attempt.
+If a same-host PID is reused by another process, the lock cannot prove that
+process identity from the portable runtime alone. An owner whose PID still
+appears alive is never reclaimed only because its heartbeat is old; it remains
+busy until that process exits or an operator resolves the lock.
 
 Useful flags:
 
@@ -474,6 +485,11 @@ npm run test:non-interference
 Fail closed when provenance is unclear:
 
 - `auth.login_required`: human login needed in the visible browser
+- `browser.target_not_found`: CDP responded, but no inspectable page matched the
+  requested ChatGPT URL; the receipt lists the available page URLs and no
+  fallback page is used
+- `browser.invalid_target_list`: CDP returned a malformed target payload; no
+  page is selected
 - `lock.busy`: another run owns the browser profile lock and `--no-wait` was used
 - `lock.timeout`: timed out waiting for another run to release the browser profile
 - `lock.release_failed`: the lock owner changed before release

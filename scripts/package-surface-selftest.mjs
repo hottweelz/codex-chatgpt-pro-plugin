@@ -25,6 +25,9 @@ assert.match(skill, /chatgpt-pro call --alias=main/);
 assert.match(skill, /chatgpt-pro rooms new --alias=critic/);
 assert.match(skill, /chatgpt-pro rooms rebind --alias=spec/);
 assert.match(skill, /chatgpt-pro rooms repair --alias=main/);
+assert.match(skill, /browser\.target_not_found/);
+assert.match(skill, /no inspectable page matched[\s\S]*no\s+fallback page is\s+used/);
+assert.match(skill, /in-lock marker and rechecks the lock identity/);
 assert.match(skill, /A successful ChatGPT response is advice and input, not the endpoint/);
 assert.match(skill, /six-stage cycle: call -> read -> extract ->\s+validate -> act -> verify/);
 assert.match(skill, /1\. Call ChatGPT with the original goal/);
@@ -83,6 +86,9 @@ assert.match(contract, /including failed calls and retries,[\s\S]*task-wide limi
 assert.equal(contract.includes("The limit ends further consultation only; safe in-scope work continues."), true);
 assert.doesNotMatch(contract, /Stop when[^\n]*GPT asks for information/);
 assert.match(contract, /echo the exact exchange into the Codex thread/);
+assert.match(contract, /browser\.target_not_found/);
+assert.match(contract, /sorted,[\s\S]*de-duplicated[\s\S]*availablePageUrls/);
+assert.match(contract, /in-lock marker and rechecks the lock directory identity/);
 assert.match(contract, /After pasting the block,[\s\S]*do not end the\s+task by displaying it/);
 
 const readme = readFileSync("README.md", "utf8");
@@ -128,6 +134,7 @@ assert.equal(marketplace.plugins?.some((entry) =>
 assert.ok(pkg.scripts["test:plugin-package"]);
 assert.ok(pkg.scripts["test:plugin-install"]);
 assert.ok(pkg.scripts["plugin:sync"]);
+assert.ok(pkg.scripts["test:cdp-client"]);
 assert.equal(pkg.devDependencies?.["chrome-devtools-mcp"], "1.2.0");
 assert.doesNotMatch(codexConfig, /command\s*=\s*"npx"/);
 assert.match(codexConfig, /command\s*=\s*"\.\/node_modules\/\.bin\/chrome-devtools-mcp"/);
@@ -136,6 +143,7 @@ assert.ok(pkg.files?.includes("docs/*.md"));
 assert.match(pkg.scripts["test:v1"], /test:deterministic/);
 assert.match(pkg.scripts["test:deterministic"], /test:plugin-package/);
 assert.match(pkg.scripts["test:deterministic"], /test:plugin-install/);
+assert.match(pkg.scripts["test:deterministic"], /test:cdp-client/);
 assert.match(pkg.scripts["test:live"], /live:history-export/);
 assert.match(pkg.scripts["test:live"], /live:rooms-rebind/);
 assert.match(pkg.scripts["test:live"], /live:rooms-repair/);

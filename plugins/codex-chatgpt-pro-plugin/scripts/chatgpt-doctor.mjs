@@ -48,6 +48,7 @@ try {
     mode,
     errorCode,
     error: String(error?.message || error),
+    ...(error?.details ? { details: error.details } : {}),
     ...(error?.details?.nextAction ? { nextAction: error.details.nextAction } : {}),
     ...(error?.details?.message ? { message: error.details.message } : {}),
     ...(error?.details?.probe ? { probe: error.details.probe } : {}),

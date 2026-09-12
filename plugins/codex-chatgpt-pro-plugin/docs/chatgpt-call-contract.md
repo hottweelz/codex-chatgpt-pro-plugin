@@ -74,6 +74,13 @@ override, and `--no-default-pro` suppresses that override for compatibility.
 For model selection, `--model=<available-model>` takes precedence over
 `CHATGPT_MODEL`; omitting both preserves the account/browser's current model.
 
+The root matcher `https://chatgpt.com/` is intentionally a browser-health
+matcher: it accepts any same-origin ChatGPT page and uses the first inspectable
+page returned by CDP. Room-bound calls do not use this broad matcher; they first
+resolve the saved conversation URL and target id, then connect to that exact
+room. A caller that needs a specific room must pass an alias or conversation
+URL, not the root health URL.
+
 ## Consultation Loop Contract
 
 A successful ChatGPT response is advice and input, not the endpoint of the
@@ -314,9 +321,12 @@ browser-profile lock:
 
 Only one `chatgpt:call` or `chatgpt:read` may control the profile at a time.
 The default is to wait for the lock. `--no-wait` fails immediately with
-`lock.busy`; `--lock-timeout-ms` bounds the wait; `--stale-lock-ttl-ms` controls
-dead-owner reclaim. Receipts include `owner` and `lock` fields with run id, pid,
+`lock.busy`; `--lock-timeout-ms` bounds the wait; a same-host confirmed-dead owner
+is reclaimed immediately, while `--stale-lock-ttl-ms` controls unknown-owner
+reclaim. Receipts include `owner` and `lock` fields with run id, pid,
 repo/project identity, wait time, held time, and stale-lock reclaim status.
+Stale reclaim claims an in-lock marker and rechecks the lock directory identity
+before removal so a replacement owner cannot be deleted by an old claimant.
 
 The package classifies commands by operation kind:
 
@@ -473,7 +483,14 @@ For `chatgpt-pro call`, receipt data should include:
 ## Next Failure Codes
 
 - `browser.cdp_unreachable`
-- `browser.target_not_found`
+- `browser.invalid_target_list` — CDP returned a malformed target payload; no
+  page is selected.
+- `browser.target_not_found` — CDP target enumeration succeeded, but no
+  inspectable page matched the requested URL. The error details include sorted,
+  de-duplicated `availablePageUrls`; the runner never falls back to another page.
+  Matching requires the same protocol, host, and port, uses path boundaries,
+  ignores query/fragment differences, and rejects credential-bearing or malformed
+  URLs.
 - `lock.busy`
 - `lock.timeout`
 - `lock.release_failed`

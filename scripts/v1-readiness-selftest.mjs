@@ -9,6 +9,7 @@ const readme = readFileSync("README.md", "utf8");
 for (const name of [
   "test",
   "test:deterministic",
+  "test:cdp-client",
   "test:v1",
   "plugin:sync",
   "test:plugin-package",

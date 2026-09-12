@@ -21,6 +21,9 @@
 - The localhost CDP endpoint is loopback-only but unauthenticated. A local process running as the user can control the logged-in browser.
 - The outbound validator uses canonical-path reads and descriptor identity checks. A malicious parent-directory swap at the exact authorization boundary remains a theoretical residual; this is accepted for the user's controlled single-user Mac environment.
 - Model/intelligence selection defaults to the account/browser current choice. Explicit CLI level/intelligence and model values take precedence over environment values; `CHATGPT_DEFAULT_LEVEL` is optional and unset by default.
+- CDP page selection is fail-closed when a URL matcher is supplied: an unmatched page returns `browser.target_not_found` with available page URLs and never falls back to `about:blank` or another page. With no matcher, the existing first-page behavior remains.
+- Browser-profile lock recovery reclaims a confirmed-dead owner immediately, even with a fresh heartbeat; unknown owners still require the stale-age rule, and live owners remain busy.
+- Lock reclamation claims an in-lock marker and rechecks the lock directory identity before removal, so a replacement owner cannot be removed by an old claimant; initialization age uses an explicit marker or directory time before heartbeat data exists.
 
 ## Collaboration contract
 
