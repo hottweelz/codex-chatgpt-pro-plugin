@@ -17,6 +17,7 @@ const repoRoot = resolve(".");
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 const pluginName = pkg.name;
 const codexHome = mkdtempSync(resolve(tmpdir(), "chatgpt-pro-plugin-home-"));
+const testRepo = mkdtempSync(resolve(tmpdir(), "chatgpt-pro-plugin-repo-"));
 
 function executable(path) {
   try {
@@ -131,6 +132,13 @@ try {
   assert.match(help.stdout, /rooms <command>/);
   assert.match(help.stdout, /history export/);
 
+  const init = run(process.execPath, [cliPath, "init"], {
+    cwd: testRepo,
+    env: { CHATGPT_PRO_HOME: resolve(codexHome, "chatgpt-pro-state") },
+  });
+  assert.equal(maybeJson(commandOutput(init))?.ok, true);
+  assert.equal(existsSync(resolve(testRepo, ".codex", "skills", "chatgpt-pro-line", "SKILL.md")), true);
+
   console.log(JSON.stringify({
     ok: true,
     tested: "plugin-install-smoke",
@@ -146,4 +154,5 @@ try {
   }, null, 2));
 } finally {
   rmSync(codexHome, { recursive: true, force: true });
+  rmSync(testRepo, { recursive: true, force: true });
 }

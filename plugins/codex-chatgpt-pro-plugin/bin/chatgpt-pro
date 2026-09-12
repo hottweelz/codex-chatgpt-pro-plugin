@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { constants, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ensureProjectState } from "../src/project-state.mjs";
@@ -42,15 +43,28 @@ function usage() {
 
 function copyFileIfNeeded(source, target, { force = false } = {}) {
   mkdirSync(dirname(target), { recursive: true });
+  if (existsSync(target) && lstatSync(target).isSymbolicLink()) {
+    throw new Error(`Refusing to read or replace symbolic-link skill target: ${target}`);
+  }
   const sourceText = readFileSync(source, "utf8");
   if (!force && existsSync(target) && readFileSync(target, "utf8") === sourceText) {
     return { path: target, changed: false };
   }
   if (!force && existsSync(target)) {
-    return { path: target, changed: false, skipped: true };
+    return {
+      path: target,
+      changed: false,
+      skipped: true,
+      warning: "Existing skill differs from this plugin version. Use --force-skill to replace it after a backup is created.",
+    };
+  }
+  let backupPath = null;
+  if (force && existsSync(target)) {
+    backupPath = `${target}.backup-${randomUUID()}`;
+    copyFileSync(target, backupPath, constants.COPYFILE_EXCL);
   }
   writeFileSync(target, sourceText);
-  return { path: target, changed: true };
+  return { path: target, changed: true, backupPath };
 }
 
 function init() {
@@ -69,7 +83,7 @@ function init() {
     }
   });
 
-  const skillSource = resolve(packageRoot, ".codex", "skills", "chatgpt-pro-line", "SKILL.md");
+  const skillSource = resolve(packageRoot, "skills", "chatgpt-pro-line", "SKILL.md");
   const skillTarget = resolve(project.repoRoot, ".codex", "skills", "chatgpt-pro-line", "SKILL.md");
   const skill = copyFileIfNeeded(skillSource, skillTarget, { force: flag("force-skill") });
 
