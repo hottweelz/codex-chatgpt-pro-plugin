@@ -20,3 +20,4 @@
 - History export needs alias validation, output containment, symlink rejection, `0700` directories, and `0600` atomic files.
 - The localhost CDP endpoint is loopback-only but unauthenticated. A local process running as the user can control the logged-in browser.
 - The outbound validator uses canonical-path reads and descriptor identity checks. A malicious parent-directory swap at the exact authorization boundary remains a theoretical residual; this is accepted for the user's controlled single-user Mac environment.
+- Model/intelligence selection defaults to the account/browser current choice. Explicit CLI level/intelligence and model values take precedence over environment values; `CHATGPT_DEFAULT_LEVEL` is optional and unset by default.

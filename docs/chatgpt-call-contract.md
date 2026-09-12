@@ -66,9 +66,13 @@ waits, reads, records the transcript, then continues. Event/interrupt mode is
 reserved for a later API where send can return a run id and response capture
 can happen separately.
 
-`chatgpt-pro call` defaults to the live `Pro` intelligence level when available.
-Callers may override with `--level`, `--intelligence`, `CHATGPT_LEVEL`, or
-`CHATGPT_INTELLIGENCE`. `--no-default-pro` is only for transport debugging.
+`chatgpt-pro call` keeps the account/browser's current available intelligence
+selection by default. It does not assume a plan-specific label. Callers may
+override with `--level`, `--intelligence`, `CHATGPT_LEVEL`, or
+`CHATGPT_INTELLIGENCE`. `CHATGPT_DEFAULT_LEVEL` is an optional environment
+override, and `--no-default-pro` suppresses that override for compatibility.
+For model selection, `--model=<available-model>` takes precedence over
+`CHATGPT_MODEL`; omitting both preserves the account/browser's current model.
 
 The canonical call path must not use OS-level mouse or keyboard automation. For
 message insertion it should use DOM focus, CDP `Input.insertText`, and a DOM
@@ -415,7 +419,7 @@ For `chatgpt-pro call`, receipt data should include:
 - lock owner, wait time, held time, and stale-lock reclaim status
 - session alias, tab id, and conversation URL
 - detected account plan, model, and intelligence level
-- desired model/intelligence and whether the call defaulted to Pro
+- desired model/intelligence and whether the call used the account default
 - prompt SHA-256 and character count
 - response mode
 - attachment paths, sizes, hashes, and upload status

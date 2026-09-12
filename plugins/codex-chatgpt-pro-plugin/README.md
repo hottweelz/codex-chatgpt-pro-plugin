@@ -103,8 +103,9 @@ Room lifecycle commands (`rooms new`, `rooms rebind`, `rooms repair`, and
 `rooms list/show`) are repo-scoped, so the same alias can exist safely in
 different repositories.
 
-By default, `call` selects the live **Pro** intelligence level and detects when a
-generated `repo-context.md` would help. Generated repo context is secret-scanned
+By default, `call` keeps the account/browser's current available intelligence
+selection and detects when a generated `repo-context.md` would help. No plan-
+specific label is assumed. Generated repo context is secret-scanned
 and requires `--confirm-repo-context-upload` or
 `CHATGPT_CONFIRM_REPO_CONTEXT_UPLOAD=1` before it can be uploaded or inlined.
 Use `--repo-context=off` / `--no-repo-context` or pass explicit scrubbed
@@ -179,8 +180,8 @@ CLI. Inside this source repo the same behavior is available via `npm run`:
 | --- | --- |
 | `npm run chrome` / `chrome:headless` / `chrome:debug` | Launch the dedicated ChatGPT browser (visible / headless / verbose) |
 | `npm run cdp:smoke` | Verify `/json/version` and `/json/list` |
-| `npm run levels:list` / `levels:set -- --level=Pro` | Read or select the live intelligence level |
-| `npm run choices:set -- --model=5.4` | Select the live model |
+| `npm run levels:list` / `levels:set -- --level=<available-level>` | Read or select the live intelligence level |
+| `npm run choices:set -- --model=<available-model>` | Select the live model |
 | `npm run rooms:list` | List repo-owned rooms (no CDP) |
 | `npm run context:bundle -- --name=focused` | Build the repo-context monofile |
 | `npm run chatgpt:call -- --alias=main --message-file=prompt.md` | Source-repo alias for `chatgpt-pro call` |
@@ -188,11 +189,14 @@ CLI. Inside this source repo the same behavior is available via `npm run`:
 | `npm run plugin:sync` | Refresh the materialized install bundle |
 
 Common runtime switches: `BROWSER_POSTURE=headed|headless`,
-`CHATGPT_DEFAULT_LEVEL` (default `Pro`), `CHATGPT_RESPONSE_TIMEOUT_MS`
+`CHATGPT_DEFAULT_LEVEL` (unset by default), `CHATGPT_MODEL` (optional), and
+`CHATGPT_RESPONSE_TIMEOUT_MS`
 (default `240000`), `CHATGPT_REPO_CONTEXT_MODE=auto|upload|inline|off`,
 `CHATGPT_CONFIRM_REPO_CONTEXT_UPLOAD=1`, `CHATGPT_LOCK_TIMEOUT_MS` (default
-`600000`), `BROWSER_OBSERVER=1` (print a run-inspector URL). See the contract
-docs for the full list.
+`600000`), `BROWSER_OBSERVER=1` (print a run-inspector URL). For a deliberate
+model override, `chatgpt-pro call --model=<available-model>` takes precedence
+over `CHATGPT_MODEL`; omit both to preserve the account/browser's current
+model. See the contract docs for the full list.
 
 ## Tests
 

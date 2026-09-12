@@ -20,6 +20,7 @@ import { buildRepoContextBundle } from "../src/repo-context-bundle.mjs";
 import { decideRepoContextMode } from "../src/repo-context-policy.mjs";
 import { describeUploadFiles, uploadFiles as uploadChatGptFiles } from "../src/chatgpt-upload.mjs";
 import { readOutboundFile } from "../src/repo-context-security.mjs";
+import { firstNonBlank, resolveCallSelection } from "../src/intelligence-policy.mjs";
 import {
   countMessagesByRole,
   findAssistantAfterUser,
@@ -200,9 +201,15 @@ async function main() {
     || boolEnv("CHATGPT_NEW_CHAT", !session && targetUrl === DEFAULT_TARGET_URL);
   const responseTimeoutMs = Number(process.env.CHATGPT_RESPONSE_TIMEOUT_MS || 300_000);
   const stableMs = Number(process.env.CHATGPT_RESPONSE_STABLE_MS || 4_000);
-  const explicitLevel = arg("level") || arg("intelligence") || process.env.CHATGPT_LEVEL || process.env.CHATGPT_INTELLIGENCE || "";
-  const requestedLevel = explicitLevel || (flag("no-default-pro") ? "" : (process.env.CHATGPT_DEFAULT_LEVEL || "Pro"));
-  const requestedModel = process.env.CHATGPT_MODEL || "";
+  const selection = resolveCallSelection({
+    explicitLevel: firstNonBlank(arg("level"), arg("intelligence")),
+    environmentLevel: firstNonBlank(process.env.CHATGPT_LEVEL, process.env.CHATGPT_INTELLIGENCE),
+    environmentDefault: process.env.CHATGPT_DEFAULT_LEVEL || "",
+    explicitModel: arg("model") || "",
+    environmentModel: process.env.CHATGPT_MODEL || "",
+    noDefault: flag("no-default-pro"),
+  });
+  const { requestedLevel, requestedModel } = selection;
   const responseMode = arg("response-mode") || process.env.CHATGPT_RESPONSE_MODE || "blocking";
   const rebindAlias = flag("rebind-alias");
   const lockTimeoutMs = Number(arg("lock-timeout-ms") || process.env.CHATGPT_LOCK_TIMEOUT_MS || 600_000);
@@ -270,7 +277,8 @@ async function main() {
     desiredChatGpt: {
       intelligence: requestedLevel || null,
       model: requestedModel || null,
-      defaultedToPro: !explicitLevel && requestedLevel === "Pro",
+      intelligenceSource: selection.intelligenceSource,
+      modelSource: selection.modelSource,
     },
     promptLength: promptInput.prompt.length,
     input: {

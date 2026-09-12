@@ -2,6 +2,28 @@
 
 Newest entries go first.
 
+## 2026-09-12T18:42:45Z — Codex
+
+- Task summary: Remove the hardcoded Pro intelligence default that blocked calls for accounts exposing GPT-5.6 Sol/GPT-5.5, and verify the new account-default behavior live.
+- Selected agent team: Codex lead; STE Testing Test Engineer (`/Users/jamestylee/AI-STE/ste/.ai/agents/testing-test-engineer.md`) for the model-selection test review.
+- Changes made: Added `src/intelligence-policy.mjs` with trimmed precedence resolution for account default, optional environment level, CLI level/intelligence, CLI model, and environment model. Updated `scripts/chatgpt-call.mjs` to preserve the site/account current selection when no override exists, to parse `--model`, and to record selection sources in receipts. Updated root/materialized README, skill, and call-contract docs. Added resolver regression tests and synchronized/reinstalled the plugin.
+- Files touched: `src/intelligence-policy.mjs`, `scripts/intelligence-policy-selftest.mjs`, `scripts/chatgpt-call.mjs`, `package.json`, docs/skills, and synchronized copies under `plugins/codex-chatgpt-pro-plugin/`; `MEMORY.md`.
+- Commands/tests run: `npm run plugin:sync`; `npm run test:intelligence-policy`; full `npm run test:v1`; `npm audit --audit-level=high`; `git diff --check`; source/materialized parity checks; local plugin remove/add; installed `doctor --live`; fresh live call with `CHATGPT_DEFAULT_LEVEL`, `CHATGPT_LEVEL`, `CHATGPT_INTELLIGENCE`, `CHATGPT_MODEL` unset; receipt and transcript verification; HomeBoss plan, review, and release-check gates.
+- Results: All deterministic/v1 tests passed. npm audit found 0 vulnerabilities. Installed plugin version 0.1.0 refreshed successfully. Live doctor passed. Account-default live call returned exactly `ACCOUNT_DEFAULT_OK`; receipt recorded `read-choices`, no `set-choices`, null desired level/model, and `account-default` sources. Account reports Plus with GPT-5.6 Sol current and GPT-5.5 available. No uploads or repo context were used.
+- Decisions made: Do not assume plan-specific labels. Keep `CHATGPT_DEFAULT_LEVEL` as an explicit opt-in override. Keep `--no-default-pro` as a compatibility switch. CLI `--model` now matches existing environment support.
+- Lessons learned:
+  - Mistake: The previous default requested a selector named `Pro`, which was unavailable on this account and caused a valid call to fail before send.
+  - Root Cause: Plan/product naming was treated as a universal live intelligence selector.
+  - Future Trigger: ChatGPT UI/account model or intelligence changes, new plan labels, or selector errors.
+  - Required Behavior Change: Let the live site retain its current available selection unless the user explicitly configures a selector; record the source and actual choices in receipts.
+  - Verification Gate: Resolver precedence tests, full `npm run test:v1`, package install smoke, and a live no-override call whose receipt uses `read-choices` and `account-default`.
+  - Durable Memory Update: Added the account-default selection rule to `MEMORY.md`.
+- Known issues: Explicit overrides can still fail clearly when a requested label is unavailable; that is intentional. Browser origin/profile and accepted local-CDP edge cases remain unchanged.
+- Next recommended steps: Use the installed plugin for normal calls without setting a default level; add a named room only when continuity is needed.
+- Notes for the next agent: To force a choice, use `--level=<available-level>` or `--model=<available-model>` after `levels:list`/`choices:list`. Omit them for account-default behavior.
+- MEMORY.md update: completed.
+- GitHub sync: pending at handoff-write time; commit only the staged model-selection files and verify `HEAD...@{u}` is `0 0`.
+
 ## 2026-09-12T18:25:46Z — Codex
 
 - Task summary: Remove the superseded `codex-chatgpt-line` plugin while keeping the new `codex-chatgpt-pro-plugin` browser and installation active.

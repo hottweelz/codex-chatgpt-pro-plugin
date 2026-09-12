@@ -81,10 +81,15 @@ binding, latest receipt/transcript paths, browser/profile lock owner if busy,
 project-state lock owner if busy, and model-cache state. It must remain safe to
 run while another agent holds the live browser lock.
 
-By default, `chatgpt-pro call` selects the live `Pro` intelligence level when
-the website exposes it. Use `--level=...` / `--intelligence=...` or
-`CHATGPT_LEVEL` to choose another live label. Use `--no-default-pro` only for
-transport debugging where changing the selector would obscure the failure.
+By default, `chatgpt-pro call` keeps the account/browser's current available
+intelligence selection. It does not assume a plan-specific label. Use
+`--level=...` / `--intelligence=...` or `CHATGPT_LEVEL` only when you want an
+explicit live label. `CHATGPT_DEFAULT_LEVEL` is an optional environment
+override. `--no-default-pro` remains accepted as a compatibility flag that
+suppresses that environment override.
+
+For model selection, `--model=<available-model>` takes precedence over
+`CHATGPT_MODEL`. Omit both to preserve the account/browser's current model.
 
 ## Required Live Thread Output
 

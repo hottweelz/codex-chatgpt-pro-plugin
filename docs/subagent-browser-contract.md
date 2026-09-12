@@ -47,8 +47,8 @@ Do not hardcode model/intelligence labels — read them from the live site:
 
 ```bash
 npm run levels:list
-npm run levels:set -- --level=Pro
-npm run choices:set -- --model=5.4
+npm run levels:set -- --level=<available-level>
+npm run choices:set -- --model=<available-model>
 ```
 
 Receipts record the account plan, available choices, and the selected/current
