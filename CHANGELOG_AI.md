@@ -22,4 +22,4 @@ Newest entries go first.
 - Next recommended steps: Fix outbound-data controls and browser origin/profile enforcement first, then fix history export and CDP/broker design, add negative security tests, rerun the full suite, and only then perform a visible login and live smoke test.
 - Notes for the next agent: The local marketplace name is `codex-chatgpt-pro-plugin`; installed plugin id is `codex-chatgpt-pro-plugin@codex-chatgpt-pro-plugin`. Uninstall with `codex --enable plugins plugin remove codex-chatgpt-pro-plugin@codex-chatgpt-pro-plugin`, then remove the marketplace with `codex --enable plugins plugin marketplace remove codex-chatgpt-pro-plugin`.
 - MEMORY.md update: completed.
-- GitHub sync: pending at handoff-write time; verify after the scoped commit.
+- GitHub sync: completed to `origin/main` in commit `b8c5822`; post-push `HEAD...@{u}` was `0 0`. The final ledger-only correction follows in the next commit.
