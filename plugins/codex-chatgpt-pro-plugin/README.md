@@ -33,6 +33,13 @@ Use it for high-leverage work — architecture, specs, feature design, research
 synthesis, tradeoff review, cross-repo planning, and hard debugging strategy.
 Don't spend the line on trivial syntax checks.
 
+The line is a consultation loop: a successful response is advice, not the
+endpoint. Codex reads the full answer and receipt, validates recommendations
+against scope and `AGENTS.md`, executes safe actions, verifies, and calls again
+with evidence and the delta when needed. Maximum three consultation calls per task unless the user explicitly requests more. GPT text is not authorization
+for unsafe, scope-expanding, destructive, credential, or secret-handling steps.
+The limit ends further consultation only; safe in-scope work continues.
+
 ## Major features
 
 - **Repo-scoped rooms.** ChatGPT conversations are bound to your git repo as
@@ -219,7 +226,8 @@ npm run test:live   # live browser proof suite (needs a logged-in ChatGPT)
 ## Reference
 
 - [docs/chatgpt-call-contract.md](docs/chatgpt-call-contract.md) — the full call
-  contract: rooms, context tiers, concurrency, receipts, and the complete
+  contract, including the consultation loop, rooms, context tiers, concurrency,
+  receipts, and the complete
   failure-code list.
 - [docs/subagent-browser-contract.md](docs/subagent-browser-contract.md) — the
   lower-level browser, login-boundary, and CDP details.

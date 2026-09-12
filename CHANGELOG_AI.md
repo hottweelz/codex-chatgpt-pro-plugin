@@ -2,6 +2,28 @@
 
 Newest entries go first.
 
+## 2026-09-12T19:19:04Z — Codex
+
+- Task summary: Make the ChatGPT-to-Codex workflow act on GPT advice instead of stopping after displaying the thread echo, while keeping consultation bounded and safe.
+- Selected agent team: Codex lead; consultation-loop documentation/test worker (`/root/consultation_loop_contract`); STE Testing Test Engineer guidance.
+- Changes made: Added a synchronized Consultation Loop Contract to the development skill, packaged skill, call-contract documentation, and READMEs. The contract defines `call -> read -> extract -> validate -> act -> verify`, requires full answer and receipt review, recommendation extraction, scope and `AGENTS.md` validation, direct evidence after action, same-room follow-ups with evidence and delta, explicit rejection of unsafe/destructive/credential/secret/scope-expanding advice, and user escalation only for missing authorization or unresolved scope conflicts. It explicitly says the thread echo is not completion and that the three-call cap ends further consultation only; safe in-scope work continues. Strengthened package-surface assertions for semantic wording and copy parity. Updated durable project memory.
+- Files touched: `.codex/skills/chatgpt-pro-line/SKILL.md`, `skills/chatgpt-pro-line/SKILL.md`, `plugins/codex-chatgpt-pro-plugin/skills/chatgpt-pro-line/SKILL.md`, `docs/chatgpt-call-contract.md`, `plugins/codex-chatgpt-pro-plugin/docs/chatgpt-call-contract.md`, `README.md`, `plugins/codex-chatgpt-pro-plugin/README.md`, `scripts/package-surface-selftest.mjs`, `plugins/codex-chatgpt-pro-plugin/scripts/package-surface-selftest.mjs`, and `MEMORY.md`.
+- Commands/tests run: `npm run plugin:sync`; root `npm run test:package-surface`; packaged `node plugins/codex-chatgpt-pro-plugin/scripts/package-surface-selftest.mjs`; `npm run test:deterministic`; `npm run test:v1`; `git diff --check`; byte-parity checks for all synchronized surfaces; HomeBoss plan, review, and release-check gates.
+- Results: Package-surface, packaged self-test, deterministic, and v1 readiness suites passed. All synchronized skill, README, contract, and self-test copies are byte-identical where required. HomeBoss plan, review, and release-check gates all returned `APPROVED`. No runtime transport file changed. Five accidental zero-byte gate-artifact files were moved to a uniquely named macOS Trash folder; unrelated governance adapters remain untracked and untouched.
+- Decisions made: The CLI remains a transport layer; the installed Codex skill owns the action loop. A successful echo must be followed by action/verification, not a final display. Stop consultation when acceptance criteria are met or the task-wide cap is reached; the cap applies to initial, failed, and retried consultation calls and does not block safe work.
+- Lessons learned:
+  - Mistake: A gate command used shell backticks inside a double-quoted task string and created empty files named `act`, `extract`, `read`, `validate`, and `verify`.
+  - Root Cause: The shell evaluated command substitutions before invoking HomeBoss.
+  - Future Trigger: Any shell command containing Markdown backticks or other command-substitution syntax.
+  - Required Behavior Change: Use single-quoted task strings or escape shell metacharacters; inspect untracked artifacts immediately after a gate command.
+  - Verification Gate: Confirm the exact artifacts are zero-byte, move only those paths to recoverable Trash, then rerun status and all tests.
+  - Durable Memory Update: Added the Consultation Loop Contract rule to `MEMORY.md`.
+- Known issues: The loop is an instruction contract, not an autonomous arbitrary-command executor; Codex still evaluates GPT advice against user scope and repository governance. Browser origin/profile attestation, unauthenticated loopback CDP, history/observer hardening, and the accepted outbound TOCTOU residual remain unchanged.
+- Next recommended steps: Refresh the installed local plugin cache, then run one harmless same-room consultation where GPT proposes a small in-scope change and verify that Codex applies and tests it before requesting a follow-up critique.
+- Notes for the next agent: Keep the current Chrome session running. Use the installed `codex-chatgpt-pro-plugin@codex-chatgpt-pro-plugin` package and omit model/intelligence overrides unless a specific available choice is required. Do not add the untracked governance adapters to the commit.
+- MEMORY.md update: completed.
+- GitHub sync: pending at handoff-write time; commit only the staged intended files, push to the tracked `origin/main`, fetch/prune, and verify `HEAD...@{u}` is `0 0`.
+
 ## 2026-09-12T18:42:45Z — Codex
 
 - Task summary: Remove the hardcoded Pro intelligence default that blocked calls for accounts exposing GPT-5.6 Sol/GPT-5.5, and verify the new account-default behavior live.
