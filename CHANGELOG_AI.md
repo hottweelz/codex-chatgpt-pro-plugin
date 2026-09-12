@@ -2,6 +2,29 @@
 
 Newest entries go first.
 
+## 2026-09-12T22:23:55Z — Codex
+
+- Task summary: Run one harmless end-to-end action-loop smoke test: create a deliberately flawed Markdown file, ask ChatGPT for the smallest correction, and verify that Codex edits the file instead of only displaying GPT’s answer.
+- Selected agent team: Codex lead; STE Testing Test Engineer guidance from `/Users/jamestylee/AI-STE/ste/.ai/agents/testing-test-engineer.md`. The packaged `chatgpt-pro-line` skill was read and followed.
+- Changes made: Created the disposable untracked fixture `codex-action-loop-test.md` with one misspelled heading. Created the repo-owned live room `action-loop-test`. Sent one summary-mode prompt with only that fixture attached. Read the complete assistant artifact and receipt, validated the file-only recommendation, changed `## Accepatance Criteria` to `## Acceptance Criteria`, and verified exact expected file content.
+- Files touched: `codex-action-loop-test.md` (intentionally untracked test fixture) and this handoff ledger. No plugin source files changed.
+- Commands/tests run: `chatgpt-pro rooms new --alias=action-loop-test`; installed `CHATGPT_THREAD_ECHO=summary chatgpt-pro call --alias=action-loop-test --repo-context=off --upload-file=codex-action-loop-test.md --response-mode=blocking ...`; full assistant/receipt inspection; `chatgpt-pro transcript verify --receipt=...`; exact-content Node assertion; heading search; status check.
+- Results: ChatGPT sent a 254-character answer: `Edit only codex-action-loop-test.md`, identify the `Accepatance` typo, replace it with `Acceptance`, make no other changes, and verify. Codex performed that edit. The final fixture is exactly 8 lines/211 bytes, contains `## Acceptance Criteria`, contains no `Accepatance`, and the exact-content assertion returned `ok: true`. Transcript verification returned `ok: true` with `threadEcho.mode: summary`, `contract: agent_must_read_full_artifact_and_act`, and received SHA-256 `6c83694b5324e4b49a85075a66ff24e369c33ea347ad8bd829bdb179a9fa1031`. The call used the new repo room and sent one prompt; no follow-up was needed because the acceptance criterion was met. Chrome remained running and the browser lock released cleanly.
+- Quality gates: Implementation plan/review/release gates from the preceding source change remain satisfied. No new HomeBoss gates were run for this runtime-only smoke because no source implementation changed; direct receipt, transcript, file-content, and scope checks were run instead.
+- Decisions made: Treat the full GPT artifact as authoritative input for extraction, not the bounded summary alone. The summary heuristic reported no structured action lines for this prose-style answer, but the active Codex continuation contract correctly required reading the full answer and acting on the validated file-only instruction. Keep the fixture untracked and disposable.
+- Lessons learned:
+  - Mistake: none in execution; the bounded summary did not surface the prose action lines.
+  - Root Cause: The deterministic summary extractor favors headings, lists, and action keywords; this answer used short plain-text handoff lines.
+  - Future Trigger: A summary that reports no structured actions while the full assistant artifact may contain prose instructions.
+  - Required Behavior Change: Always read the complete assistant artifact and receipt before deciding that no action exists; validate scope and apply only the smallest safe change.
+  - Verification Gate: Transcript hash verification plus exact expected-file assertion, absence/presence checks for the corrected heading, and clean lock/browser checks.
+  - Durable Memory Update: not needed; the existing memory and skill already require full-artifact reading and document heuristic-summary limitations.
+- Known issues: The action summary can miss clear prose instructions, so it is a bounded hint rather than a planner. The fixture remains untracked by design. No same-room follow-up was sent because the one-step acceptance criterion was satisfied.
+- Next recommended steps: none for this requested smoke; a future broader test can use a two-action but still harmless fixture if desired.
+- Notes for the next agent: Keep Chrome and `/Users/jamestylee/.chatgpt-pro-codex/chrome-profile` running. The test room alias is `action-loop-test`; its run artifacts are under `/Users/jamestylee/Projects/codex-chatgpt-pro-plugin/.devspace/runs/2026-09-12T22-22-43-231Z-chatgpt-call/`. Do not commit `codex-action-loop-test.md` unless the user explicitly wants the fixture retained.
+- MEMORY.md update: not needed.
+- GitHub sync: pending at handoff-write time; source is synchronized at `a38efe1` and only this ledger entry is new.
+
 ## 2026-09-12T22:15:49Z — Codex
 
 - Task summary: Stop reprinting novella-sized ChatGPT answers into the Codex window and make the ChatGPT-to-Codex handoff continue into validated work instead of ending at display.
