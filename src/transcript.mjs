@@ -29,5 +29,12 @@ export function renderReceivedEcho({ receivedMarkdown }) {
 }
 
 export function shouldPrintThreadEcho(env = process.env) {
-  return !["0", "false", "no", "off"].includes(String(env[THREAD_ECHO_DISABLE_ENV] || "").toLowerCase());
+  return threadEchoOutputMode(env) === "enabled";
+}
+
+export function threadEchoOutputMode(env = process.env) {
+  const value = String(env[THREAD_ECHO_DISABLE_ENV] || "").trim().toLowerCase();
+  if (value === "summary") return "summary";
+  if (["0", "false", "no", "off"].includes(value)) return "disabled";
+  return "enabled";
 }

@@ -7,6 +7,7 @@ import {
   renderChatGptTranscript,
   renderReceivedEcho,
   shouldPrintThreadEcho,
+  threadEchoOutputMode,
 } from "../transcript.mjs";
 
 export function sha256Text(text) {
@@ -27,7 +28,8 @@ export function renderEnvelopeTranscript({ kind = "call", sentMarkdown = "", rec
 }
 
 export function threadEchoMode(env = process.env) {
-  return shouldPrintThreadEcho(env) ? "enabled" : "disabled_by_env";
+  const mode = threadEchoOutputMode(env);
+  return mode === "disabled" ? "disabled_by_env" : mode;
 }
 
 export function sealRunEnvelope({
@@ -37,6 +39,7 @@ export function sealRunEnvelope({
   sentMarkdown = "",
   receivedMarkdown = "",
   stdoutRendered = shouldPrintThreadEcho(),
+  stdoutMode = null,
 } = {}) {
   if (!runDir) throw new Error("runDir is required to seal a ChatGPT run envelope.");
   if (!receipt) throw new Error("receipt is required to seal a ChatGPT run envelope.");
@@ -67,13 +70,22 @@ export function sealRunEnvelope({
   if (existsSync(promptPath)) artifactHashes.promptSha256 = fileSha256(promptPath);
   if (existsSync(assistantPath)) artifactHashes.assistantSha256 = fileSha256(assistantPath);
 
-  const mode = stdoutRendered ? "enabled" : "disabled_by_env";
+  const configuredMode = threadEchoMode();
+  const mode = stdoutMode || (stdoutRendered
+    ? "enabled"
+    : configuredMode === "summary"
+      ? "summary"
+      : "disabled_by_env");
   const threadEcho = {
     mode,
     stdoutRendered: Boolean(stdoutRendered),
     requiredForInteractive: true,
-    contract: "agent_must_paste_verbatim",
-    enforcement: stdoutRendered ? "stdout_rendered_not_verified" : "disabled_by_env",
+    contract: mode === "summary" ? "agent_must_read_full_artifact_and_act" : "agent_must_paste_verbatim",
+    enforcement: mode === "enabled"
+      ? "stdout_rendered_not_verified"
+      : mode === "summary"
+        ? "summary_rendered_not_verified"
+        : "disabled_by_env",
     transcriptSha256: artifactHashes.transcriptSha256,
     sentSha256: sha256Text(sentMarkdown),
     receivedSha256: sha256Text(receivedMarkdown),
@@ -141,6 +153,24 @@ export function verifyRunEnvelope({ receiptPath } = {}) {
     sentSha256: sha256Text(sentMarkdown),
     receivedSha256: sha256Text(receivedMarkdown),
   };
+  const actionSummary = receipt.actionSummary || null;
+  if (actionSummary?.path) {
+    if (!existsSync(actionSummary.path)) {
+      const error = new Error(`Missing action summary artifact: ${actionSummary.path}`);
+      error.errorCode = "transcript.action_summary_missing";
+      throw error;
+    }
+    const actualSummarySha256 = sha256Text(readFileSync(actionSummary.path, "utf8"));
+    if (actionSummary.sha256 && actionSummary.sha256 !== actualSummarySha256) {
+      const error = new Error("Receipt action summary hash does not match the artifact.");
+      error.errorCode = "transcript.action_summary_hash_mismatch";
+      error.details = {
+        expected: actionSummary.sha256,
+        actual: actualSummarySha256,
+      };
+      throw error;
+    }
+  }
   const threadEcho = receipt.threadEcho || {};
   for (const [key, value] of Object.entries(actual)) {
     if (threadEcho[key] && threadEcho[key] !== value) {

@@ -6,6 +6,7 @@ import { pageProbe, redactedProbe } from "../src/chatgpt-page.mjs";
 import { waitForAssistantResponse } from "../src/chatgpt-composer.mjs";
 import { connectToChatGptSession } from "../src/chatgpt-sessions.mjs";
 import { acquireChatGptOperation } from "../src/chatgpt-operation.mjs";
+import { renderActionSummary } from "../src/chatgpt/action-summary.mjs";
 import { writeJson } from "../src/observe.mjs";
 import { ensureProjectState } from "../src/project-state.mjs";
 import {
@@ -30,6 +31,38 @@ function flag(name) {
   return process.argv.includes(`--${name}`);
 }
 
+function compactReceipt(receipt) {
+  return {
+    output: "summary",
+    ok: Boolean(receipt.ok),
+    kind: receipt.kind || "read",
+    errorCode: receipt.errorCode || null,
+    error: receipt.error || null,
+    conversationUrl: receipt.conversationUrl || receipt.roomTarget?.actualTargetUrl || null,
+    title: receipt.title || receipt.sessionTarget?.title || null,
+    response: receipt.response
+      ? {
+          textSha256: receipt.response.textSha256 || null,
+          charCount: receipt.response.charCount || null,
+          finishDetectedBy: receipt.response.finishDetectedBy || null,
+        }
+      : null,
+    actionSummary: receipt.actionSummary || null,
+    artifacts: receipt.artifacts || {},
+    roomTarget: receipt.roomTarget || null,
+    threadEcho: receipt.threadEcho || null,
+    lock: receipt.lock
+      ? {
+          waitMs: receipt.lock.waitMs ?? null,
+          heldMs: receipt.lock.heldMs ?? null,
+          released: receipt.lock.released ?? null,
+          staleLockDetected: receipt.lock.staleLockDetected ?? null,
+          staleLockReclaimed: receipt.lock.staleLockReclaimed ?? null,
+        }
+      : null,
+  };
+}
+
 const port = Number(process.env.CHROME_REMOTE_DEBUGGING_PORT || DEFAULT_CDP_PORT);
 const targetUrl = process.env.BROWSER_TARGET_URL || DEFAULT_TARGET_URL;
 const session = arg("session") || arg("alias") || process.env.CHATGPT_SESSION || "";
@@ -47,7 +80,9 @@ let cdp = null;
 let operationHandle = null;
 let assistantText = "";
 let envelope = null;
-const stdoutThreadEcho = threadEchoMode() === "enabled";
+const threadOutputMode = threadEchoMode();
+const stdoutThreadEcho = threadOutputMode === "enabled";
+const stdoutActionSummary = threadOutputMode === "summary";
 const started = now();
 const receipt = {
   loop: "chatgpt-read-current",
@@ -131,12 +166,36 @@ try {
   if (error?.details?.operation && !receipt.operation) receipt.operation = error.details.operation;
   if (error?.details?.locks && !receipt.locks) receipt.locks = error.details.locks;
 } finally {
+  const actionSummaryPath = resolve(runDir, "action-summary.md");
+  const actionSummary = renderActionSummary({
+    assistantText,
+    receipt: {
+      ...receipt,
+      artifacts: {
+        ...(receipt.artifacts || {}),
+        assistant: resolve(runDir, "assistant.md"),
+        transcript: resolve(runDir, "transcript.md"),
+        receipt: resolve(runDir, "receipt.json"),
+      },
+    },
+  });
+  writeFileSync(actionSummaryPath, actionSummary, { mode: 0o600 });
+  receipt.actionSummary = {
+    path: actionSummaryPath,
+    sha256: sha256(actionSummary),
+    charCount: actionSummary.length,
+  };
+  receipt.artifacts = {
+    ...(receipt.artifacts || {}),
+    actionSummary: actionSummaryPath,
+  };
   envelope = sealRunEnvelope({
     kind: "read",
     runDir,
     receipt,
     receivedMarkdown: assistantText,
     stdoutRendered: stdoutThreadEcho,
+    stdoutMode: threadOutputMode,
   });
   if (cdp) await cdp.close().catch(() => {});
   if (operationHandle) {
@@ -159,9 +218,12 @@ try {
   writeJson(resolve(runDir, "receipt.json"), receipt);
 }
 
-console.log(JSON.stringify(receipt, null, 2));
+console.log(JSON.stringify(stdoutActionSummary ? compactReceipt(receipt) : receipt, null, 2));
 if (stdoutThreadEcho) {
   console.log("");
   console.log(envelope.transcriptMarkdown.trimEnd());
+} else if (stdoutActionSummary) {
+  console.log("");
+  console.log(renderActionSummary({ assistantText, receipt }).trimEnd());
 }
 process.exit(receipt.ok ? 0 : 1);

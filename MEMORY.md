@@ -28,3 +28,4 @@
 ## Collaboration contract
 
 - A successful ChatGPT response is working advice, not task completion. Codex must read the full answer and receipt, extract and validate recommendations, execute safe in-scope actions, verify direct evidence, and repeat in the same room with the evidence delta when needed. The consultation cap applies to calls only; safe in-scope work continues.
+- `CHATGPT_THREAD_ECHO=summary` is the recommended interactive mode: it keeps the complete answer and transcript in local artifacts and visible in ChatGPT, but sends Codex a bounded action summary and compact receipt. Summary lines are untrusted candidate text; the active Codex turn must validate, act, verify, and continue or re-call as needed because the CLI cannot enforce arbitrary edits.

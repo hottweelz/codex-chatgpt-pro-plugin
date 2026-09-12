@@ -58,9 +58,12 @@ assert.match(skill, /stop making consultation calls when[\s\S]*acceptance criter
 assert.match(skill, /The limit ends[\s\S]*calls only;[\s\S]*does not stop safe, in-scope work/);
 assert.match(skill, /including failed calls and retries,[\s\S]*task-wide limit/);
 assert.equal(skill.includes("The limit ends further consultation only; safe in-scope work continues."), true);
-assert.match(skill, /repeat the exchange verbatim in/);
-assert.match(skill, /Message Received From ChatGPT Pro/);
-assert.match(skill, /After copying the block,[\s\S]*do not end the task by displaying it/);
+assert.match(skill, /complete exchange is always written to `assistant\.md` and `transcript\.md`/);
+assert.match(skill, /Do not paste a long assistant answer into the Codex\s+thread by default/);
+assert.match(skill, /CHATGPT_THREAD_ECHO=summary/);
+assert.match(skill, /CHATGPT_THREAD_ECHO=1/);
+assert.match(skill, /action-summary\.md/);
+assert.match(skill, /automatically continue instead of stopping at the\s+summary/);
 assert.equal(skill, pluginSkill, "development and package skill copies must be byte-identical");
 
 const contract = readFileSync("docs/chatgpt-call-contract.md", "utf8");
@@ -85,11 +88,14 @@ assert.match(contract, /The limit ends[\s\S]*calls only;[\s\S]*does not stop saf
 assert.match(contract, /including failed calls and retries,[\s\S]*task-wide limit/);
 assert.equal(contract.includes("The limit ends further consultation only; safe in-scope work continues."), true);
 assert.doesNotMatch(contract, /Stop when[^\n]*GPT asks for information/);
-assert.match(contract, /echo the exact exchange into the Codex thread/);
+assert.match(contract, /complete exchange is always written to `assistant\.md` and `transcript\.md`/);
+assert.match(contract, /CHATGPT_THREAD_ECHO=summary/);
+assert.match(contract, /CHATGPT_THREAD_ECHO=1/);
+assert.match(contract, /action-summary\.md/);
+assert.match(contract, /Codex must automatically continue/);
 assert.match(contract, /browser\.target_not_found/);
 assert.match(contract, /sorted,[\s\S]*de-duplicated[\s\S]*availablePageUrls/);
 assert.match(contract, /in-lock marker and rechecks the lock directory identity/);
-assert.match(contract, /After pasting the block,[\s\S]*do not end the\s+task by displaying it/);
 
 const readme = readFileSync("README.md", "utf8");
 assert.match(readme, /chatgpt-pro doctor/);
@@ -99,6 +105,8 @@ assert.match(readme, /chatgpt-pro rooms repair --alias=main/);
 assert.match(readme, /npm run test:v1/);
 assert.match(readme, /npm run test:live/);
 assert.match(readme, /`npm test`: runs deterministic tests only/);
+assert.match(readme, /CHATGPT_THREAD_ECHO=summary/);
+assert.match(readme, /action-summary\.md/);
 assert.equal(readme.includes(consultationLimit), true);
 assert.equal(readme.includes(consultationLimitBehavior), true);
 
@@ -108,6 +116,7 @@ if (existsSync(packagedRoot)) {
   const packagedReadme = readFileSync(resolve(packagedRoot, "README.md"), "utf8");
   const packagedContract = readFileSync(resolve(packagedRoot, "docs/chatgpt-call-contract.md"), "utf8");
   const packagedSelftest = readFileSync(resolve(packagedRoot, "scripts/package-surface-selftest.mjs"), "utf8");
+  const packagedActionSummary = readFileSync(resolve(packagedRoot, "src/chatgpt/action-summary.mjs"), "utf8");
   assert.equal(packagedSkill, skill, "packaged skill must match both source copies");
   assert.equal(packagedReadme, readme, "packaged README must match the source README");
   assert.equal(packagedSkill.includes(consultationLimit), true);
@@ -118,9 +127,13 @@ if (existsSync(packagedRoot)) {
   assert.equal(packagedContract.includes(consultationLimit), true);
   assert.equal(packagedContract.includes(consultationLimitBehavior), true);
   assert.equal(packagedSelftest, readFileSync("scripts/package-surface-selftest.mjs", "utf8"));
+  assert.equal(packagedActionSummary, readFileSync("src/chatgpt/action-summary.mjs", "utf8"));
 }
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+const callScript = readFileSync("scripts/chatgpt-call.mjs", "utf8");
+const readScript = readFileSync("scripts/chatgpt-read-current.mjs", "utf8");
+const observeSource = readFileSync("src/observe.mjs", "utf8");
 const manifest = JSON.parse(readFileSync(".codex-plugin/plugin.json", "utf8"));
 const marketplace = JSON.parse(readFileSync(".agents/plugins/marketplace.json", "utf8"));
 const codexConfig = readFileSync(".codex/config.toml", "utf8");
@@ -135,6 +148,15 @@ assert.ok(pkg.scripts["test:plugin-package"]);
 assert.ok(pkg.scripts["test:plugin-install"]);
 assert.ok(pkg.scripts["plugin:sync"]);
 assert.ok(pkg.scripts["test:cdp-client"]);
+assert.ok(pkg.scripts["test:action-summary"]);
+assert.ok(pkg.scripts["test:output-modes"]);
+assert.ok(existsSync(resolve("src/chatgpt/action-summary.mjs")));
+assert.ok(existsSync(resolve("scripts/action-summary-selftest.mjs")));
+assert.ok(existsSync(resolve("scripts/output-mode-selftest.mjs")));
+assert.match(callScript, /renderActionSummary/);
+assert.match(callScript, /stdoutMode: threadOutputMode/);
+assert.match(readScript, /renderActionSummary/);
+assert.match(observeSource, /action-summary\.md/);
 assert.equal(pkg.devDependencies?.["chrome-devtools-mcp"], "1.2.0");
 assert.doesNotMatch(codexConfig, /command\s*=\s*"npx"/);
 assert.match(codexConfig, /command\s*=\s*"\.\/node_modules\/\.bin\/chrome-devtools-mcp"/);
@@ -144,6 +166,8 @@ assert.match(pkg.scripts["test:v1"], /test:deterministic/);
 assert.match(pkg.scripts["test:deterministic"], /test:plugin-package/);
 assert.match(pkg.scripts["test:deterministic"], /test:plugin-install/);
 assert.match(pkg.scripts["test:deterministic"], /test:cdp-client/);
+assert.match(pkg.scripts["test:deterministic"], /test:action-summary/);
+assert.match(pkg.scripts["test:deterministic"], /test:output-modes/);
 assert.match(pkg.scripts["test:live"], /live:history-export/);
 assert.match(pkg.scripts["test:live"], /live:rooms-rebind/);
 assert.match(pkg.scripts["test:live"], /live:rooms-repair/);

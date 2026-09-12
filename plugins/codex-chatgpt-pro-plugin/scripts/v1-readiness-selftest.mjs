@@ -10,6 +10,8 @@ for (const name of [
   "test",
   "test:deterministic",
   "test:cdp-client",
+  "test:action-summary",
+  "test:output-modes",
   "test:v1",
   "plugin:sync",
   "test:plugin-package",

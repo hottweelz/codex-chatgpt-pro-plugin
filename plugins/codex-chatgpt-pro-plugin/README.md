@@ -55,9 +55,11 @@ The limit ends further consultation only; safe in-scope work continues.
   control.
 - **Multi-agent safe.** A global browser-profile lock serializes every call, so
   concurrent Codex agents never collide in the same ChatGPT window.
-- **Receipts + verbatim thread-echo.** Every call records the exact prompt and
+- **Receipts + bounded handoff.** Every call records the exact prompt and full
   response (with SHA-256 hashes), selected model/intelligence, lock timing,
-  conversation URL, a screenshot, and network/console logs.
+  conversation URL, a screenshot, and network/console logs. Interactive Codex
+  output can stay compact while the complete answer remains in ChatGPT and the
+  run artifacts.
 - **Visible history export.** Pull a bound room's visible ChatGPT history to
   disk and reread it later without touching the browser — handy for picking up a
   human-started thread.
@@ -163,20 +165,22 @@ mouse/keyboard automation, no voice or dictation.
 - **On the record.** The verbatim prompt and response, hashes, a screenshot, and
   network/console logs land in `.devspace/runs/<id>/` for every call.
 
-## Thread echo
+## Bounded handoff
 
-Interactive Codex use keeps the exchange in the Codex session log. `call` prints
-this block by default — paste it verbatim, don't summarize:
+Interactive Codex use should keep the full answer in ChatGPT and the run
+artifacts, then print only a compact action handoff:
 
-```md
-## Message Sent To ChatGPT Pro
-
-...
-
-## Message Received From ChatGPT Pro
-
-...
+```bash
+CHATGPT_THREAD_ECHO=summary chatgpt-pro call --alias=main --prompt="..."
 ```
+
+The command writes `action-summary.md` and prints candidate next actions plus a
+required Codex continuation step. The complete `assistant.md` and
+`transcript.md` remain available for inspection. Use `CHATGPT_THREAD_ECHO=1`
+for deliberate verbatim audit/debug output or `CHATGPT_THREAD_ECHO=0` to suppress
+all displays. Extracted lines are untrusted candidate text, not authorization.
+The summary is not completion: read the full answer, validate, act, verify, and
+continue in the same room when needed.
 
 ## Command surface
 
@@ -200,7 +204,8 @@ Common runtime switches: `BROWSER_POSTURE=headed|headless`,
 `CHATGPT_RESPONSE_TIMEOUT_MS`
 (default `240000`), `CHATGPT_REPO_CONTEXT_MODE=auto|upload|inline|off`,
 `CHATGPT_CONFIRM_REPO_CONTEXT_UPLOAD=1`, `CHATGPT_LOCK_TIMEOUT_MS` (default
-`600000`), `BROWSER_OBSERVER=1` (print a run-inspector URL). For a deliberate
+`600000`), `CHATGPT_THREAD_ECHO=summary|1|0` (bounded handoff, verbatim, or
+silent), `BROWSER_OBSERVER=1` (print a run-inspector URL). For a deliberate
 model override, `chatgpt-pro call --model=<available-model>` takes precedence
 over `CHATGPT_MODEL`; omit both to preserve the account/browser's current
 model. See the contract docs for the full list.

@@ -70,6 +70,48 @@ try {
 
   assert.equal(threadEchoMode({ CHATGPT_THREAD_ECHO: "0" }), "disabled_by_env");
   assert.equal(threadEchoMode({ CHATGPT_THREAD_ECHO: "false" }), "disabled_by_env");
+  assert.equal(threadEchoMode({ CHATGPT_THREAD_ECHO: "summary" }), "summary");
+  const summaryDir = resolve(root, "summary");
+  const summaryReceipt = {
+    loop: "chatgpt-call",
+    runDir: summaryDir,
+    ok: true,
+  };
+  mkdirSync(summaryDir, { recursive: true });
+  writeFileSync(resolve(summaryDir, "input.md"), sent);
+  writeFileSync(resolve(summaryDir, "prompt.md"), sent);
+  writeFileSync(resolve(summaryDir, "assistant.md"), received);
+  const summaryPath = resolve(summaryDir, "action-summary.md");
+  const summaryText = "## ChatGPT guidance summary\n\n- Next Codex step: verify.\n";
+  writeFileSync(summaryPath, summaryText);
+  summaryReceipt.actionSummary = {
+    path: summaryPath,
+    sha256: sha256Text(summaryText),
+    charCount: summaryText.length,
+  };
+  summaryReceipt.artifacts = { actionSummary: summaryPath };
+  const summaryEnvelope = sealRunEnvelope({
+    kind: "call",
+    runDir: summaryDir,
+    receipt: summaryReceipt,
+    sentMarkdown: sent,
+    receivedMarkdown: received,
+    stdoutRendered: false,
+    stdoutMode: "summary",
+  });
+  assert.equal(summaryEnvelope.threadEcho.mode, "summary");
+  assert.equal(summaryEnvelope.threadEcho.stdoutRendered, false);
+  assert.equal(summaryEnvelope.threadEcho.contract, "agent_must_read_full_artifact_and_act");
+  writeFileSync(resolve(summaryDir, "receipt.json"), `${JSON.stringify(summaryReceipt, null, 2)}\n`);
+  assert.equal(verifyRunEnvelope({ receiptPath: resolve(summaryDir, "receipt.json") }).ok, true);
+  writeFileSync(summaryPath, "tampered summary\n");
+  assert.throws(
+    () => verifyRunEnvelope({ receiptPath: resolve(summaryDir, "receipt.json") }),
+    (error) => {
+      assert.equal(error.errorCode, "transcript.action_summary_hash_mismatch");
+      return true;
+    },
+  );
   assert.equal(threadEchoMode({}), "enabled");
 } finally {
   rmSync(root, { recursive: true, force: true });

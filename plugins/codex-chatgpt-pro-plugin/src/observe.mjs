@@ -179,7 +179,7 @@ export async function createRecorder(cdp, { runDir, observerUrl = "", chromeDebu
       observer: observerUrl,
       chromeDebug: chromeDebugUrl,
     };
-    for (const file of ["input.md", "prompt.md", "assistant.md", "transcript.md"]) {
+    for (const file of ["input.md", "prompt.md", "assistant.md", "transcript.md", "action-summary.md"]) {
       const path = resolve(runDir, file);
       if (existsSync(path)) artifacts[file.replace(".md", "")] = path;
     }
@@ -301,5 +301,6 @@ function renderMarkdown(receipt, { errors, failed }) {
   lines.push(`- snapshot: ${a.snapshot}`);
   lines.push(`- console: ${a.console}`);
   lines.push(`- network: ${a.network}`);
+  if (a.actionSummary) lines.push(`- action summary: ${a.actionSummary}`);
   return lines.join("\n") + "\n";
 }

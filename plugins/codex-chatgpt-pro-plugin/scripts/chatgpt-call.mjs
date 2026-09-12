@@ -20,6 +20,7 @@ import { buildRepoContextBundle } from "../src/repo-context-bundle.mjs";
 import { decideRepoContextMode } from "../src/repo-context-policy.mjs";
 import { describeUploadFiles, uploadFiles as uploadChatGptFiles } from "../src/chatgpt-upload.mjs";
 import { readOutboundFile } from "../src/repo-context-security.mjs";
+import { renderActionSummary } from "../src/chatgpt/action-summary.mjs";
 import { firstNonBlank, resolveCallSelection } from "../src/intelligence-policy.mjs";
 import {
   countMessagesByRole,
@@ -245,7 +246,9 @@ async function main() {
   let connectedTarget = null;
   let finalConversationUrl = null;
   let envelope = null;
-  const stdoutThreadEcho = threadEchoMode() === "enabled";
+  const threadOutputMode = threadEchoMode();
+  const stdoutThreadEcho = threadOutputMode === "enabled";
+  const stdoutActionSummary = threadOutputMode === "summary";
   const started = now();
   const receipt = {
     loop: "chatgpt-call",
@@ -536,6 +539,29 @@ async function main() {
     runState.update("failed", { ok: false, error: receipt.error, errorCode: receipt.errorCode });
   } finally {
     receipt.totalMs = Math.round(now() - started);
+    const actionSummaryPath = resolve(runDir, "action-summary.md");
+    const actionSummary = renderActionSummary({
+      assistantText,
+      receipt: {
+        ...receipt,
+        artifacts: {
+          ...(receipt.artifacts || {}),
+          assistant: resolve(runDir, "assistant.md"),
+          transcript: resolve(runDir, "transcript.md"),
+          receipt: resolve(runDir, "receipt.json"),
+        },
+      },
+    });
+    writeFileSync(actionSummaryPath, actionSummary, { mode: 0o600 });
+    receipt.actionSummary = {
+      path: actionSummaryPath,
+      sha256: sha256(actionSummary),
+      charCount: actionSummary.length,
+    };
+    receipt.artifacts = {
+      ...(receipt.artifacts || {}),
+      actionSummary: actionSummaryPath,
+    };
     envelope = sealRunEnvelope({
       kind: "call",
       runDir,
@@ -543,6 +569,7 @@ async function main() {
       sentMarkdown: promptInput.prompt,
       receivedMarkdown: assistantText,
       stdoutRendered: stdoutThreadEcho,
+      stdoutMode: threadOutputMode,
     });
     let aliasRecord = null;
     if (receipt.ok && freshThread) {
@@ -611,6 +638,7 @@ async function main() {
           prompt: resolve(runDir, "prompt.md"),
           assistant: resolve(runDir, "assistant.md"),
           transcript: resolve(runDir, "transcript.md"),
+          actionSummary: resolve(runDir, "action-summary.md"),
         },
       });
       console.log("\n" + bundle.summary);
@@ -647,6 +675,9 @@ async function main() {
     if (stdoutThreadEcho) {
       console.log("");
       console.log(envelope.transcriptMarkdown.trimEnd());
+    } else if (stdoutActionSummary) {
+      console.log("");
+      console.log(actionSummary.trimEnd());
     }
   }
 
