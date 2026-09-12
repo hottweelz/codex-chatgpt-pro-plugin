@@ -22,7 +22,7 @@ Newest entries go first.
 - Next recommended steps: Obtain explicit approval for one harmless same-room ChatGPT call, then verify the full `call -> read -> extract -> validate -> act -> verify` loop instead of stopping at the thread echo.
 - Notes for the next agent: Keep the current Chrome process and `/Users/jamestylee/.chatgpt-pro-codex/chrome-profile` running. Use the enabled local plugin `codex-chatgpt-pro-plugin@codex-chatgpt-pro-plugin`; omit model/intelligence overrides unless a specific currently available choice is required. Backup: `/tmp/codex-chatgpt-pro-plugin-installed-baseline-20260912T203500Z`; snapshots: `/tmp/codex-chatgpt-pro-plugin-preflight-20260912T205800Z/`.
 - MEMORY.md update: completed.
-- GitHub sync: pending at handoff-write time; implementation commit is `59e4e96` and the handoff-only commit will follow.
+- GitHub sync: completed in commits `59e4e96` and `92aec87`; pushed to tracked `origin/main`, fetched/pruned, and verified `git rev-list --left-right --count HEAD...@{u}` returned `0 0`.
 
 ## 2026-09-12T19:19:04Z — Codex
 
