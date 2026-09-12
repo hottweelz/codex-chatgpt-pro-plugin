@@ -22,7 +22,7 @@ Newest entries go first.
 - Next recommended steps: If desired, implement strict ChatGPT origin/profile attestation next; keep live testing limited to trusted non-sensitive prompts until that yellow flag is addressed.
 - Notes for the next agent: Use `--confirm-outside-repo=/absolute/path` once for each deliberate outside file. Do not use `--confirm-repo-context-upload` as a substitute; it only confirms generated repo context.
 - MEMORY.md update: completed.
-- GitHub sync: pending at handoff-write time; commit only intended files and verify `HEAD...@{u}` is `0 0`.
+- GitHub sync: completed in commit `5124fd8`; `git fetch --prune origin` and `git rev-list --left-right --count HEAD...@{u}` returned `0 0`. Pre-existing untracked governance adapters remain untouched.
 
 ## 2026-09-12T17:32:07Z — Codex
 
