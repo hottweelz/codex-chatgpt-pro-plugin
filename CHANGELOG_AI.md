@@ -2,6 +2,28 @@
 
 Newest entries go first.
 
+## 2026-09-12T18:17:14Z — Codex
+
+- Task summary: Run the first controlled live test of the installed local plugin after the user completed visible ChatGPT login.
+- Selected agent team: Codex lead; no additional worker needed for this bounded runtime smoke.
+- Changes made: None to source. Reused the installed and enabled local plugin `codex-chatgpt-pro-plugin@codex-chatgpt-pro-plugin` version `0.1.0`.
+- Files touched: Runtime artifacts only under `.devspace/runs/2026-09-12T18-16-34-126Z-chatgpt-call/`; no tracked source files changed.
+- Commands/tests run: installed `chatgpt-pro doctor --live`; installed `chatgpt-pro call --fresh --repo-context=off --no-default-pro --prompt='Reply with exactly: PROBE_OK'`; installed `chatgpt-pro transcript verify --receipt=.devspace/runs/2026-09-12T18-16-34-126Z-chatgpt-call/receipt.json`; installed `chatgpt-pro status --alias=main`.
+- Results: Doctor passed with logged-in ChatGPT at `https://chatgpt.com/`, composer detected, Plus plan, and GPT-5.6 Sol intelligence. The fresh no-upload probe passed in 28.5 seconds and returned exactly `PROBE_OK`. Transcript verification passed with recorded sent/received/transcript SHA-256 values. Browser lock acquired and released cleanly. No credentials were entered by automation. No repository context or file upload was used.
+- Decisions made: Treat the local transport as operational for non-sensitive no-upload calls. Do not claim Pro entitlement; the account reports Plus. Keep the browser profile open for follow-up testing.
+- Lessons learned:
+  - Mistake: none.
+  - Root Cause: none.
+  - Future Trigger: Any live call, upload, browser restart, or room-binding test.
+  - Required Behavior Change: Keep the first calls fresh, explicit `--repo-context=off`, and no-upload until a specific broader test is requested.
+  - Verification Gate: `doctor --live` pass, exact probe response, transcript verification pass, and clean lock release.
+  - Durable Memory Update: Not needed; this is current runtime evidence already covered by project continuity.
+- Known issues: Account is Plus rather than Pro. Origin/profile yellow flag, local CDP acceptance, history/observer edge cases, and the outbound validator residual remain as previously documented.
+- Next recommended steps: If desired, bind a named `main` room and run a second harmless text-only call; request an explicit upload test only when ready to exercise the new outbound gate.
+- Notes for the next agent: Fresh probe conversation URL was `https://chatgpt.com/c/6aa59703-d06c-83e9-87e4-fec6e6f6717d`. Receipt and transcript are local runtime artifacts and were not committed.
+- MEMORY.md update: not needed.
+- GitHub sync: no source changes in this live-test handoff; repository remains synchronized from commit `62fda09`.
+
 ## 2026-09-12T18:06:25Z — Codex
 
 - Task summary: Harden the outbound file/context boundary after the user prioritized that concern and classified CDP as an accepted edge case, origin/profile as a yellow flag, and history/observer concerns as lower priority.
