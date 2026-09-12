@@ -22,7 +22,7 @@ Newest entries go first.
 - Next recommended steps: Refresh the installed local plugin cache, then run one harmless same-room consultation where GPT proposes a small in-scope change and verify that Codex applies and tests it before requesting a follow-up critique.
 - Notes for the next agent: Keep the current Chrome session running. Use the installed `codex-chatgpt-pro-plugin@codex-chatgpt-pro-plugin` package and omit model/intelligence overrides unless a specific available choice is required. Do not add the untracked governance adapters to the commit.
 - MEMORY.md update: completed.
-- GitHub sync: pending at handoff-write time; commit only the staged intended files, push to the tracked `origin/main`, fetch/prune, and verify `HEAD...@{u}` is `0 0`.
+- GitHub sync: completed in commit `5cb7524`; pushed to tracked `origin/main`, fetched/pruned, and verified `git rev-list --left-right --count HEAD...@{u}` returned `0 0`.
 
 ## 2026-09-12T18:42:45Z — Codex
 
